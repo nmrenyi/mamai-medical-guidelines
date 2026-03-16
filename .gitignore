@@ -1,5 +1,6 @@
 # Raw data files (tracked via Google Drive, not git)
 raw/
+processed/
 
 # OS files
 .DS_Store
