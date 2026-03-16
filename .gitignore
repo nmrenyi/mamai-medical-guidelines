@@ -1,0 +1,16 @@
+# Raw data files (tracked via Google Drive, not git)
+raw/
+
+# OS files
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+.claude/
