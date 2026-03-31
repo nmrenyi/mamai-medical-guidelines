@@ -25,9 +25,12 @@ scripts/
 processed/                 # gitignored — generated outputs
   markdowns/
     international/         # 39 marker-pdf markdowns, one per PDF
-    tanzania/              # 19 marker-pdf markdowns, one per PDF
-  chunks_for_rag.txt       # RAG chunks (TODO: regenerate from marker-pdf markdowns)
-  embeddings.sqlite        # vector store (TODO: regenerate from marker-pdf chunks)
+    tanzania/              # 18 marker-pdf markdowns, one per PDF
+  legacy_pymupdf/          # old outputs from deprecated PyMuPDF path (stale)
+    chunks_for_rag.txt
+    embeddings.sqlite
+  chunks_for_rag.txt       # TODO: regenerate from marker-pdf markdowns
+  embeddings.sqlite        # TODO: regenerate from marker-pdf chunks
 ```
 
 ---
