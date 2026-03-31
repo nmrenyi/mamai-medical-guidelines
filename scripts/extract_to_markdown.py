@@ -24,10 +24,10 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 RAW_DIR = PROJECT_ROOT / "raw" / "Clinical guidelines_International" / "Clinical guidelines_with highlights"
 OUTPUT_DIR = PROJECT_ROOT / "processed" / "markdown"
 
-# marker-pdf embeds {N} (0-indexed) as physical page boundary markers when
-# paginate_output=True. The 48-dash lines it also emits are table/section
-# dividers that appear throughout content and must NOT be used as page splits.
-_CURLY_PAGE = re.compile(r"^\{(\d+)\}$", re.MULTILINE)
+# marker-pdf embeds {N}-{48 dashes} as physical page boundary markers when
+# paginate_output=True (e.g. "{0}------------------------------------------------").
+# The N is 0-indexed and matches the physical PDF page count exactly.
+_CURLY_PAGE = re.compile(r"^\{(\d+)\}-{48}$", re.MULTILINE)
 
 
 def get_relative_path(pdf_path: Path) -> str:
