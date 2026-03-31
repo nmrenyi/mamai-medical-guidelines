@@ -14,6 +14,7 @@ JOB_NAME="mamai-extract-intl"
 IMAGE="registry.rcp.epfl.ch/light/yiren/mamai-guidelines:amd64-cuda-yiren-latest"
 PROJECT="light-yiren"
 REPO_DIR="/lightscratch/users/yiren/mamai-medical-guidelines"
+SERVER_SCRIPTS="light:/mnt/light/scratch/users/yiren/mamai-medical-guidelines/scripts"
 
 # Delete previous job if it exists (runai doesn't allow reusing names)
 runai delete job "$JOB_NAME" 2>/dev/null || true
@@ -23,7 +24,7 @@ runai delete job "$JOB_NAME" 2>/dev/null || true
 echo "Syncing scripts to server..."
 scp scripts/extract_to_markdown.py scripts/extract_tanzania.py \
     scripts/exclusions.py scripts/run_extraction.sh \
-    "light:$REPO_DIR/scripts/"
+    "$SERVER_SCRIPTS/"
 
 echo "Submitting job: $JOB_NAME"
 
@@ -31,8 +32,13 @@ runai submit "$JOB_NAME" \
   --image "$IMAGE" \
   --pvc light-scratch:/lightscratch \
   --gpu 1 \
+  --cpu 12 --cpu-limit 12 \
+  --memory 64G --memory-limit 64G \
+  --large-shm \
+  --node-pool h100 \
   --project "$PROJECT" \
-  -- bash -c "bash $REPO_DIR/scripts/run_extraction.sh"
+  -e SKIP_INSTALL_PROJECT=1 \
+  -- bash -c "cd $REPO_DIR && python3 scripts/extract_to_markdown.py --workers 4 && python3 scripts/extract_tanzania.py --workers 4"
 
 echo ""
 echo "Job submitted. To monitor:"
