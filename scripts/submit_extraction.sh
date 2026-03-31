@@ -40,9 +40,8 @@ runai submit "$JOB_NAME" \
   --run-as-uid 296712 \
   --run-as-gid 84257 \
   -e SKIP_INSTALL_PROJECT=1 \
-  -e PYTHONUSERBASE=/lightscratch/users/yiren/.local \
+  -e FONT_PATH=/tmp/marker/GoNotoCurrent-Regular.ttf \
   -- bash -c "
-    pip install --user marker-pdf -q 2>&1 | tail -3 &&
     cd /lightscratch/users/yiren/mamai-medical-guidelines &&
     python3 scripts/extract_to_markdown.py --workers 4 &&
     python3 scripts/extract_tanzania.py --workers 4
