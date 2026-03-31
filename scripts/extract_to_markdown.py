@@ -11,6 +11,7 @@ Usage:
 
 import argparse
 import os
+import re
 import sys
 from multiprocessing import Process, Queue
 from pathlib import Path
@@ -23,8 +24,10 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 RAW_DIR = PROJECT_ROOT / "raw" / "Clinical guidelines_International" / "Clinical guidelines_with highlights"
 OUTPUT_DIR = PROJECT_ROOT / "processed" / "markdown"
 
-# marker-pdf's default page separator when paginate_output=True
-MARKER_PAGE_SEP = "-" * 48
+# marker-pdf embeds {N} (0-indexed) as physical page boundary markers when
+# paginate_output=True. The 48-dash lines it also emits are table/section
+# dividers that appear throughout content and must NOT be used as page splits.
+_CURLY_PAGE = re.compile(r"^\{(\d+)\}$", re.MULTILINE)
 
 
 def get_relative_path(pdf_path: Path) -> str:
@@ -59,14 +62,8 @@ def collect_pdfs() -> list[Path]:
 
 
 def normalize_page_markers(text: str) -> str:
-    """Replace marker-pdf's page separators with <!-- page: N --> comments."""
-    parts = text.split(MARKER_PAGE_SEP)
-    result = []
-    for i, part in enumerate(parts):
-        page_num = i + 1
-        marker = f"<!-- page: {page_num} -->"
-        result.append(f"{marker}\n{part.strip()}")
-    return "\n\n".join(result)
+    """Replace marker-pdf's {N} page markers with <!-- page: N+1 --> comments."""
+    return _CURLY_PAGE.sub(lambda m: f"<!-- page: {int(m.group(1)) + 1} -->", text)
 
 
 def worker_fn(worker_id: int, pdf_paths: list[Path], output_dir: Path, progress_queue: Queue):
