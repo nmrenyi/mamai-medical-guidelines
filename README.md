@@ -1,8 +1,8 @@
 # MAMAI Medical Guidelines
 
-These guidelines are used for the RAG system of the [MAMAI project](https://github.com/nmrenyi/mamai).
+Guidelines for the RAG system of the [MAMAI project](https://github.com/nmrenyi/mamai).
 
-Raw data shared by Trevor Brokowski, available at [Google Drive](https://drive.google.com/drive/folders/1urBQnXJaay8AlhqQPtcVjWuqZUiFcvOK). Place both data sources under `raw/`.
+Raw data shared by Trevor Brokowski via [Google Drive](https://drive.google.com/drive/folders/1urBQnXJaay8AlhqQPtcVjWuqZUiFcvOK). Place both folders under `raw/`.
 
 ---
 
@@ -10,54 +10,48 @@ Raw data shared by Trevor Brokowski, available at [Google Drive](https://drive.g
 
 ```
 raw/
-  Clinical guidelines_International/      # international guideline PDFs
-  Clinical guidelines_Zanzibar-Tanzania/  # Tanzania/Zanzibar guideline PDFs
+  Clinical guidelines_International/      # 39 international guideline PDFs (gitignored)
+  Clinical guidelines_Zanzibar-Tanzania/  # 19 Tanzania/Zanzibar guideline PDFs (gitignored)
 
 scripts/
-  extract_to_markdown.py   # extract international PDFs → markdown (marker-pdf)
-  extract_tanzania.py      # extract Tanzania PDFs → markdown (marker-pdf)
-  submit_extraction.sh     # submit international extraction job to LiGHT cluster
-  submit_tanzania.sh       # submit Tanzania extraction job to LiGHT cluster
+  extract_to_markdown.py   # convert international PDFs → markdown via marker-pdf
+  extract_tanzania.py      # convert Tanzania PDFs → markdown via marker-pdf
+  submit_extraction.sh     # run international extraction on LiGHT H100 cluster
+  submit_tanzania.sh       # run Tanzania extraction on LiGHT H100 cluster
   exclusions.py            # PDFs to skip or deduplicate
-  chunk_guidelines.py      # chunk markdowns → chunks_for_rag.txt (uses <!-- page: N --> markers)
-  chunk_guidelines_pdf.py  # (deprecated) PyMuPDF-based chunking, bypasses markdown step
+  chunk_guidelines.py      # chunk markdowns into RAG passages (reads <!-- page: N --> markers)
+  chunk_guidelines_pdf.py  # (deprecated) PyMuPDF direct chunking, no markdown intermediate
 
-processed/
+processed/                 # gitignored — generated outputs
   markdowns/
-    international/         # marker-pdf extracted markdowns, one .md per PDF
-    tanzania/              # marker-pdf extracted markdowns, Tanzania PDFs
-  markdowns_backup/        # backup of markdowns before page-marker regex fix
-  chunks_for_rag.txt       # RAG chunks — OUTDATED (from PyMuPDF path, see TODO)
-  embeddings.sqlite        # vector embeddings — OUTDATED (from PyMuPDF path, see TODO)
+    international/         # 39 marker-pdf markdowns, one per PDF
+    tanzania/              # 19 marker-pdf markdowns, one per PDF
+  chunks_for_rag.txt       # RAG chunks (TODO: regenerate from marker-pdf markdowns)
+  embeddings.sqlite        # vector store (TODO: regenerate from marker-pdf chunks)
 ```
 
 ---
 
-## Current Workflow
+## Pipeline
 
-### Step 1 — PDF Extraction (marker-pdf, GPU cluster)
+### Step 1 — PDF → Markdown (done)
 
-PDFs are converted to markdown using [marker-pdf](https://github.com/VikParuchuri/marker), an ML-based converter that recovers document structure (headings, tables, lists).
+PDFs are converted to structured markdown using [marker-pdf](https://github.com/VikParuchuri/marker), an ML-based converter that recovers headings, tables, and lists. Each `.md` file contains `<!-- page: N -->` markers aligned to physical PDF page numbers (verified: exact match across all 58 files).
 
-Each output `.md` contains `<!-- page: N -->` comments marking physical page boundaries, derived from marker-pdf's `{N}------------------------------------------------` separators (`paginate_output=True`).
-
-**Submit to LiGHT cluster (EPFL) via run:ai:**
+**Run on LiGHT cluster (EPFL) via run:ai:**
 
 ```bash
-# International guidelines (39 PDFs)
-bash scripts/submit_extraction.sh
-
-# Tanzania/Zanzibar guidelines (19 PDFs)
-bash scripts/submit_tanzania.sh
+bash scripts/submit_extraction.sh   # international (39 PDFs)
+bash scripts/submit_tanzania.sh     # Tanzania (19 PDFs)
 ```
 
-Monitor with:
+Monitor:
 ```bash
 runai logs mamai-extract-intl -f
 runai logs mamai-extract-tz -f
 ```
 
-Pull results after completion:
+Pull results:
 ```bash
 rsync -av --include="*.md" --exclude="tanzania/" --exclude="*/" \
   "light:/mnt/light/scratch/users/yiren/mamai-medical-guidelines/processed/markdown/" \
@@ -68,34 +62,32 @@ rsync -av \
   "processed/markdowns/tanzania/"
 ```
 
-> **Cluster note:** `FONT_PATH=/tmp/marker/GoNotoCurrent-Regular.ttf` is set so marker-pdf writes its font to a writable path (the system packages dir is read-only for non-root users). Jobs run as uid=296712 (yiren) for NFS access.
+### Step 2 — Markdown → Chunks (TODO)
 
-### Step 2 — Chunking (TODO)
+Re-run `chunk_guidelines.py` on the marker-pdf markdowns to regenerate `chunks_for_rag.txt`.
 
-Re-run `scripts/chunk_guidelines.py` on the new marker-pdf markdowns to regenerate `processed/chunks_for_rag.txt`.
+`chunks_for_rag.txt` and `embeddings.sqlite` are currently produced by the **deprecated PyMuPDF path** (`chunk_guidelines_pdf.py`), which does raw text extraction without ML-based structure recovery. They need to be regenerated.
 
-> `chunks_for_rag.txt` and `embeddings.sqlite` are currently from the **deprecated PyMuPDF path** (`chunk_guidelines_pdf.py`), which does raw text extraction without ML-based structure recovery. They must be regenerated from the marker-pdf markdowns.
+### Step 3 — Chunks → Embeddings (TODO)
 
-### Step 3 — Embedding (TODO)
-
-After chunking, re-run the embedding pipeline to regenerate `processed/embeddings.sqlite` from the new chunks.
+Re-run the embedding pipeline on the new chunks to regenerate `embeddings.sqlite`.
 
 ---
 
-## Why marker-pdf over PyMuPDF?
+## marker-pdf vs PyMuPDF
 
 | | marker-pdf (current) | PyMuPDF (deprecated) |
 |---|---|---|
-| Text quality | ML-based: recovers headings, tables, lists | Raw text dump, no structure |
+| Text quality | ML-based: recovers structure (headings, tables, lists) | Raw character stream, no structure |
 | Tables | Reconstructed as markdown tables | Flattened or garbled |
-| Page markers | Accurate `<!-- page: N -->` from PDF boundaries | Accurate but no structure context |
-| Speed | Slow (requires GPU) | Fast (CPU only) |
-| Output | `processed/markdowns/` | Chunks directly, no intermediate markdown |
+| Page accuracy | Exact match to PDF page count (verified) | Accurate |
+| Speed | Slow — GPU required | Fast — CPU only |
+| Output | `processed/markdowns/` (intermediate markdown) | Chunks directly |
 
 ---
 
 ## Notes
 
-- `exclusions.py` lists PDFs excluded from processing (duplicates, non-English, etc.)
+- `exclusions.py` lists PDFs skipped during extraction (duplicates, non-English)
 - `extract_tanzania.py --force` re-extracts even if output already exists
-- `processed/markdowns_backup/` preserves originals before the page-marker fix (the initial extraction used a wrong separator pattern that inflated page counts)
+- Cluster jobs run as uid=296712 with `FONT_PATH=/tmp/marker/...` to avoid a write-permission issue in the system packages directory
