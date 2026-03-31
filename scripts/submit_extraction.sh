@@ -25,7 +25,7 @@ runai submit "$JOB_NAME" \
   --pvc light-scratch:/lightscratch \
   --gpu 1 \
   --project "$PROJECT" \
-  -- bash -c "cd $REPO_DIR && git pull && bash scripts/run_extraction.sh"
+  -- bash -c "cd $REPO_DIR && git pull https://github.com/nmrenyi/mamai-medical-guidelines.git main && bash scripts/run_extraction.sh"
 
 echo ""
 echo "Job submitted. To monitor:"
