@@ -18,6 +18,13 @@ REPO_DIR="/lightscratch/users/yiren/mamai-medical-guidelines"
 # Delete previous job if it exists (runai doesn't allow reusing names)
 runai delete job "$JOB_NAME" 2>/dev/null || true
 
+# Sync latest scripts to the server before submitting so the job runs
+# the current code without needing git credentials inside the container.
+echo "Syncing scripts to server..."
+scp scripts/extract_to_markdown.py scripts/extract_tanzania.py \
+    scripts/exclusions.py scripts/run_extraction.sh \
+    "light:$REPO_DIR/scripts/"
+
 echo "Submitting job: $JOB_NAME"
 
 runai submit "$JOB_NAME" \
@@ -25,7 +32,7 @@ runai submit "$JOB_NAME" \
   --pvc light-scratch:/lightscratch \
   --gpu 1 \
   --project "$PROJECT" \
-  -- bash -c "cd $REPO_DIR && git pull https://github.com/nmrenyi/mamai-medical-guidelines.git main && bash scripts/run_extraction.sh"
+  -- bash -c "bash $REPO_DIR/scripts/run_extraction.sh"
 
 echo ""
 echo "Job submitted. To monitor:"
