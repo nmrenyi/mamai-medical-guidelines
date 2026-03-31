@@ -17,6 +17,10 @@ EXCLUDE = [
         "The State of the World_s Midwifery 2021 _ United Nations Population Fund.html",
         "Saved webpage (HTML), not a clinical guideline PDF"
     ),
+    (
+        "The Zanzibar Nurses and Midwifery Council.docx",
+        "Word document (.docx), not a PDF — marker-pdf cannot process it"
+    ),
 ]
 
 # Duplicate files: maps the copy to skip -> the canonical copy to keep.
