@@ -9,10 +9,12 @@ Output goes to processed/markdown/tanzania/.
 Usage:
     python scripts/extract_tanzania.py              # default 3 workers
     python scripts/extract_tanzania.py --workers 4
+    python scripts/extract_tanzania.py --force      # re-extract even if output exists
 """
 
 import argparse
 import os
+import re
 import sys
 from multiprocessing import Process, Queue
 from pathlib import Path
@@ -27,11 +29,12 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 RAW_DIR = PROJECT_ROOT / "raw" / "Clinical guidelines_Zanzibar-Tanzania"
 OUTPUT_DIR = PROJECT_ROOT / "processed" / "markdown" / "tanzania"
 
-# marker-pdf's default page separator when paginate_output=True
-MARKER_PAGE_SEP = "-" * 48
+# marker-pdf embeds {N}-{48 dashes} as physical page boundary markers when
+# paginate_output=True (e.g. "{0}------------------------------------------------").
+_CURLY_PAGE = re.compile(r"^\{(\d+)\}-{48}$", re.MULTILINE)
 
 
-def collect_pdfs() -> list[Path]:
+def collect_pdfs(force: bool = False) -> list[Path]:
     """Walk RAW_DIR and collect all PDFs, skipping already-processed ones."""
     pdfs = []
     for root, _dirs, files in os.walk(RAW_DIR):
@@ -40,7 +43,7 @@ def collect_pdfs() -> list[Path]:
             if path.suffix.lower() != ".pdf":
                 continue
             out = OUTPUT_DIR / f"{path.stem}.md"
-            if out.exists():
+            if out.exists() and not force:
                 print(f"  SKIP (already done): {f}")
                 continue
             pdfs.append(path)
@@ -48,13 +51,8 @@ def collect_pdfs() -> list[Path]:
 
 
 def normalize_page_markers(text: str) -> str:
-    """Replace marker-pdf's page separators with <!-- page: N --> comments."""
-    parts = text.split(MARKER_PAGE_SEP)
-    result = []
-    for i, part in enumerate(parts):
-        marker = f"<!-- page: {i + 1} -->"
-        result.append(f"{marker}\n{part.strip()}")
-    return "\n\n".join(result)
+    """Replace marker-pdf's {N} page markers with <!-- page: N+1 --> comments."""
+    return _CURLY_PAGE.sub(lambda m: f"<!-- page: {int(m.group(1)) + 1} -->", text)
 
 
 def pdf_worker_fn(worker_id: int, pdf_paths: list, output_dir: Path, progress_queue: Queue):
@@ -88,6 +86,11 @@ def main():
         default=3,
         help="Number of parallel workers (default: 3, ~4GB RAM each)",
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Re-extract even if output already exists",
+    )
     args = parser.parse_args()
 
     print(f"Source: {RAW_DIR}")
@@ -95,7 +98,7 @@ def main():
     print()
 
     print("Collecting PDFs...")
-    pdfs = collect_pdfs()
+    pdfs = collect_pdfs(force=args.force)
     print(f"Found {len(pdfs)} PDFs to process.\n")
 
     if not pdfs:
