@@ -66,7 +66,17 @@ rsync -av \
 
 ### Step 2 — Markdown → Chunks (TODO)
 
-Re-run `chunk_guidelines.py` on the marker-pdf markdowns to regenerate `chunks_for_rag.txt`.
+Run `chunk_guidelines.py` on the marker-pdf markdowns to generate `chunks_for_rag.txt`:
+
+```bash
+python scripts/chunk_guidelines.py
+```
+
+**File selection logic:**
+- **International** (39 PDFs): only the 24 HIGH-relevance files are included by default; executive summaries that duplicate full guidelines are also skipped. Pass `--all` to include everything.
+- **Tanzania** (18 PDFs): all files are always included — no relevance filtering, since these are regional guidelines specifically relevant to the deployment context.
+
+The output paths (`processed/markdowns/international/` and `processed/markdowns/tanzania/`) are already hardcoded in the script and match the current directory layout.
 
 ### Step 3 — Chunks → Embeddings (TODO)
 
