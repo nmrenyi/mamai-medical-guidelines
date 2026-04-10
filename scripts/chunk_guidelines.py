@@ -35,43 +35,6 @@ SKIP_FILES = {
     "WHO_PositiveBirthExSum_2018", # duplicates WHO_PositiveBirth_2018
 }
 
-# Only HIGH-relevance files are included by default (see
-# processed/guideline_relevance_summary.md). Add MEDIUM-relevance stems here
-# if you want broader coverage.
-HIGH_RELEVANCE = {
-    # Preconception
-    "ACOG_Preconcepcare_2019",
-    "AJGP_Preconception_2024",
-    # Antenatal
-    "WHO_ANC_2016",
-    "NICE_Antenatal_2021",
-    "NICE_Nutrition_2025",
-    "ACM_FetalMove_2017",
-    "NHS_Fetal_2019",
-    # Intrapartum
-    "WHO_PositiveBirth_2018",
-    "NICE_intrapartum_2023",
-    "WHO_LabourCare_2020",
-    "RCM_InductionLabour_2019",
-    "AJOG_BirthPlan_2023",
-    "WHO_Cord_2014",
-    "WHO_Sepsis_2015",
-    # Postnatal
-    "NICE_Posnatal_2021",
-    "WHO_PNC_2013",
-    # Newborn
-    "WHO_Neborn_2017",
-    "ERC_NewbornResuscitation_2021",
-    "enc-course-overview-09.05.2024",
-    # Mental health
-    "NICE_MentalHealth_2020",
-    "RCM_MentalHealth_2015",
-    # Comprehensive / cross-phase
-    "WHO_IntegratedPregBirth_2015",
-    "WHO_Complications_2017",
-    "ICM_EssentialCompetencies_2024",
-    "ACM_Referral_2021",
-}
 
 # Minimum chunk character length — shorter chunks are discarded.
 MIN_CHUNK_CHARS = 80
@@ -767,7 +730,7 @@ def process_file_structured(
     return chunks, next_index
 
 
-def collect_files(project_root: Path, include_all: bool) -> tuple[list[Path], list[tuple[Path, str]]]:
+def collect_files(project_root: Path) -> tuple[list[Path], list[tuple[Path, str]]]:
     intl_dir = project_root / "processed" / "normalized" / "international"
     tanzania_dir = project_root / "processed" / "normalized" / "tanzania"
 
@@ -777,16 +740,7 @@ def collect_files(project_root: Path, include_all: bool) -> tuple[list[Path], li
     to_process: list[Path] = []
     to_skip: list[tuple[Path, str]] = []
 
-    for md_path in intl_files:
-        stem = md_path.stem
-        if stem in SKIP_FILES:
-            to_skip.append((md_path, "duplicate"))
-        elif not include_all and stem not in HIGH_RELEVANCE:
-            to_skip.append((md_path, "not HIGH"))
-        else:
-            to_process.append(md_path)
-
-    for md_path in tanzania_files:
+    for md_path in intl_files + tanzania_files:
         stem = md_path.stem
         if stem in SKIP_FILES:
             to_skip.append((md_path, "duplicate"))
@@ -875,18 +829,13 @@ def main() -> None:
         "--jsonl-sidecar",
         help="Optional JSONL sidecar path for richer chunk metadata",
     )
-    parser.add_argument(
-        "--all",
-        action="store_true",
-        help="Include all files, not just HIGH-relevance ones",
-    )
     args = parser.parse_args()
 
     project_root = Path(__file__).resolve().parent.parent
     output_path = project_root / args.output
     sidecar_path = (project_root / args.jsonl_sidecar) if args.jsonl_sidecar else None
 
-    to_process, to_skip = collect_files(project_root, include_all=args.all)
+    to_process, to_skip = collect_files(project_root)
     if not to_process:
         print("No markdown files found in processed/normalized.")
         return
