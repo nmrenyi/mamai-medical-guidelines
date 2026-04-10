@@ -128,7 +128,7 @@ The pipeline:
    ```
    The `<sep>` delimiter and `[SOURCE:|PAGE:]` prefix are parsed by `RagPipeline.kt` in the Android app.
 
-Use `--strategy legacy` to reproduce the old page-first behavior for side-by-side comparisons. Use `--jsonl-sidecar <path>` to write a JSONL file with richer metadata per chunk (section path, chunk type, page range) for debugging or evaluation.
+Use `--jsonl-sidecar <path>` to write a JSONL file with richer metadata per chunk (section path, chunk type, page range) for debugging or evaluation.
 
 **File selection:** all 39 international and 18 Tanzania files are included. The only exclusions are executive summaries that duplicate full guidelines (`SKIP_FILES` in the script). Relevance filtering is left to the retrieval system at query time.
 
