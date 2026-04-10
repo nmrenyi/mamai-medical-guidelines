@@ -20,7 +20,6 @@ scripts/
   submit_tanzania.sh       # run Tanzania extraction on LiGHT H100 cluster
   exclusions.py            # PDFs to skip or deduplicate
   chunk_guidelines.py      # chunk markdowns into RAG passages (reads <!-- page: N --> markers)
-  chunk_guidelines_pdf.py  # (deprecated) PyMuPDF direct chunking, no markdown intermediate
 
 processed/                 # gitignored — generated outputs
   markdowns/
@@ -68,8 +67,6 @@ rsync -av \
 ### Step 2 — Markdown → Chunks (TODO)
 
 Re-run `chunk_guidelines.py` on the marker-pdf markdowns to regenerate `chunks_for_rag.txt`.
-
-`chunks_for_rag.txt` and `embeddings.sqlite` are currently produced by the **deprecated PyMuPDF path** (`chunk_guidelines_pdf.py`), which does raw text extraction without ML-based structure recovery. They need to be regenerated.
 
 ### Step 3 — Chunks → Embeddings (TODO)
 
