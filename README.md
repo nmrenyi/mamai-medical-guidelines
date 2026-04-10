@@ -11,7 +11,7 @@ Raw data shared by Trevor Brokowski via [Google Drive](https://drive.google.com/
 ```
 raw/
   Clinical guidelines_International/      # 39 international guideline PDFs (gitignored)
-  Clinical guidelines_Zanzibar-Tanzania/  # 19 Tanzania/Zanzibar guideline PDFs (gitignored)
+  Clinical guidelines_Zanzibar-Tanzania/  # Tanzania/Zanzibar guideline PDFs (gitignored)
 
 scripts/
   extract_to_markdown.py   # [step 1] convert international PDFs → markdown via marker-pdf
@@ -22,6 +22,8 @@ scripts/
   strip_spans.py           # [step 2] strip HTML span tags from extracted markdowns
   chunk_guidelines.py      # [step 3] chunk normalized markdowns into RAG passages
   build_embeddings.py      # [step 4] embed chunks with Gecko TFLite model
+  submit_embeddings.sh     # run embedding build on LiGHT CPU cluster
+  run_embeddings.sh        # cluster worker: stage inputs locally, install deps, embed
 
 Makefile                   # orchestrates steps 2–4 (step 1 runs on cluster)
 
@@ -41,15 +43,23 @@ processed/                 # gitignored — generated outputs
 
 ## Pipeline
 
+### Current Status (2026-04-11)
+
+- Step 1 complete: `processed/extracted/` contains 39 international and 18 Tanzania markdown files.
+- Step 2 complete: `processed/normalized/` contains the span-stripped corpus used for chunking.
+- Step 3 complete: `processed/chunks_for_rag.txt` contains 21,731 structured chunks.
+- Step 4 complete: `processed/embeddings.sqlite` contains 21,731 Gecko embeddings and was validated against the chunk file.
+- Validation status: the ordered text stream in `embeddings.sqlite` matches the ordered chunk stream exactly (`row_count == chunk_count == 21731`, first/last rows match, full text hash matches).
+
 ### Step 1 — PDF → Markdown (done)
 
-PDFs are converted to structured markdown using [marker-pdf](https://github.com/VikParuchuri/marker), an ML-based converter that recovers headings, tables, and lists. Each `.md` file contains `<!-- page: N -->` markers aligned to physical PDF page numbers (verified: exact match across all 58 files).
+PDFs are converted to structured markdown using [marker-pdf](https://github.com/VikParuchuri/marker), an ML-based converter that recovers headings, tables, and lists. Each `.md` file contains `<!-- page: N -->` markers aligned to physical PDF page numbers (verified against the extracted corpus).
 
 **Run on LiGHT cluster (EPFL) via run:ai:**
 
 ```bash
 bash scripts/submit_extraction.sh   # international (39 PDFs)
-bash scripts/submit_tanzania.sh     # Tanzania (19 PDFs)
+bash scripts/submit_tanzania.sh     # Tanzania/Zanzibar corpus
 ```
 
 Monitor:
@@ -69,7 +79,7 @@ rsync -av \
   "processed/extracted/tanzania/"
 ```
 
-### Step 2 — Normalize (TODO)
+### Step 2 — Normalize (done)
 
 Strip HTML span tags left by marker-pdf from the extracted markdowns:
 
@@ -80,7 +90,7 @@ make processed/normalized
 
 Reads from `processed/extracted/`, writes to `processed/normalized/`. Originals are not modified.
 
-### Step 3 — Markdown → Chunks (TODO)
+### Step 3 — Markdown → Chunks (done)
 
 Chunk the normalized markdowns into RAG passages:
 
@@ -140,7 +150,35 @@ Use `--jsonl-sidecar <path>` to write a JSONL file with richer metadata per chun
 
 **File selection:** all 39 international and 18 Tanzania files are included. The only exclusions are executive summaries that duplicate full guidelines (`SKIP_FILES` in the script). Relevance filtering is left to the retrieval system at query time.
 
-### Step 4 — Chunks → Embeddings (TODO)
+### Step 4 — Chunks → Embeddings (done)
+
+**Recommended for the full build: LiGHT CPU cluster**
+
+```bash
+bash scripts/submit_embeddings.sh
+```
+
+This job:
+
+1. syncs `build_embeddings.py`, `embed_parallel.py`, `run_embeddings.sh`, `chunks_for_rag.txt`, and the Gecko model files to cluster scratch
+2. stages the chunk file and model locally inside the pod to avoid `/lightscratch` NFS stalls during embedding
+3. installs `sentencepiece` and `ai-edge-litert` if the image does not already have them
+4. runs a 200-chunk smoke test
+5. runs the full parallel build with `embed_parallel.py`
+6. writes `processed/embeddings.sqlite` back to cluster scratch
+
+Monitor:
+
+```bash
+runai logs mamai-embed -f
+```
+
+Pull results:
+
+```bash
+scp light:/mnt/light/scratch/users/yiren/mamai-medical-guidelines/processed/embeddings.sqlite processed/
+scp light:/mnt/light/scratch/users/yiren/mamai-medical-guidelines/processed/embeddings_smoke.sqlite processed/
+```
 
 ```bash
 make  # runs the full local pipeline (steps 2–4)
@@ -166,3 +204,4 @@ make  # runs the full local pipeline (steps 2–4)
 - `exclusions.py` lists PDFs skipped during extraction (duplicates, non-English)
 - `extract_tanzania.py --force` re-extracts even if output already exists
 - Cluster jobs run as uid=296712 with `FONT_PATH=/tmp/marker/...` to avoid a write-permission issue in the system packages directory
+- The embedding cluster image currently does not ship `sentencepiece` or `ai-edge-litert`; `run_embeddings.sh` installs them on demand before starting the smoke/full build
