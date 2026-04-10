@@ -326,6 +326,12 @@ def should_skip_section(section: Section) -> bool:
         if any(pattern in normalized for pattern in BOILERPLATE_HEADING_PATTERNS):
             return True
 
+    # Heading-only sections have no body of their own — their heading is
+    # captured as a breadcrumb in child sections, so emitting them as
+    # standalone chunks adds noise with no retrieval value.
+    if not section.body_text().strip():
+        return True
+
     rendered = section.render()
     if not rendered:
         return True
