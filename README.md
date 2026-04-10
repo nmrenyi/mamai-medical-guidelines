@@ -91,16 +91,33 @@ make processed/chunks_for_rag.txt
 
 **Chunking strategy (default: `structured`)**
 
-The chunker uses a structure-first approach:
+Clinical guidelines are structured documents — a heading signals a new topic, not a page break. The default strategy exploits this: it splits on headings and treats page boundaries as citation metadata only. This keeps each recommendation, procedure, or section intact as a single retrieval unit, even when it spans multiple PDF pages.
 
-1. **Split on headings** (`#`–`######` and standalone `**bold**` lines) — one section per heading, regardless of heading level. This keeps each clinical topic intact as a unit.
-2. **Page markers as metadata only** — `<!-- page: N -->` tags are tracked per line and attached to chunks as citations, but are never used as split points. Content that flows across a page boundary stays in one chunk.
-3. **Boilerplate filtering** — sections whose headings match patterns like "Contents", "Acknowledgements", "References", or whose body looks like a table of contents are discarded.
-4. **Size control** — sections ≤ 1500 chars are emitted as a single chunk. Larger sections are subdivided respecting block boundaries in order of preference: table rows (repeating the header), list items, paragraphs, then overlapping character windows as a last resort.
+The pipeline:
 
-Each chunk is prefixed with `[SOURCE:stem|PAGE:N]` for citation by the Android app.
+1. **Parse into sections** — the markdown is scanned line by line. Any ATX heading (`#`–`######`) or standalone `**bold line**` (≥ 3 words) opens a new section. All content until the next heading belongs to that section.
 
-Use `--strategy legacy` to reproduce the old page-first behavior for side-by-side comparisons.
+2. **Track pages as metadata** — `<!-- page: N -->` markers are consumed during parsing and attached per-line. Each chunk records `page_start` from its first content line. Page boundaries never force a split.
+
+3. **Filter boilerplate** — sections are discarded if their heading matches patterns like "contents", "acknowledgements", "references", "foreword", or if the body looks like a table of contents (lines ending in page numbers). This removes front/back matter with no clinical value.
+
+4. **Emit or subdivide by size**:
+   - Section ≤ 1500 chars → emitted as one chunk
+   - Section > 1500 chars → subdivided, preferring block boundaries in this order:
+     - **Tables**: split by row groups, repeating the header row on each piece
+     - **Lists**: split at top-level item boundaries
+     - **Paragraphs**: split at `\n\n` breaks
+     - **Fallback**: overlapping 800-char windows with 100-char overlap
+
+5. **Prefix metadata** — every chunk is written as:
+   ```
+   <sep>[SOURCE:NICE_intrapartum_2023|PAGE:14]
+   ## 1.4 Care throughout labour
+   Women should be offered...
+   ```
+   The `<sep>` delimiter and `[SOURCE:|PAGE:]` prefix are parsed by `RagPipeline.kt` in the Android app.
+
+Use `--strategy legacy` to reproduce the old page-first behavior for side-by-side comparisons. Use `--jsonl-sidecar <path>` to write a JSONL file with richer metadata per chunk (section path, chunk type, page range) for debugging or evaluation.
 
 **File selection logic:**
 - **International** (39 PDFs): only the 25 HIGH-relevance files are included by default; executive summaries that duplicate full guidelines are also skipped. Pass `--all` to include everything.
