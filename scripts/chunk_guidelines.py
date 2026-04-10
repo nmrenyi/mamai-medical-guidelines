@@ -778,32 +778,84 @@ def make_chunk(
     section: Section | None,
     chunk_type: str,
     index: int,
-    chunk_size: int = 800,
-    overlap: int = 100,
-) -> list[Chunk]:
-    """Return one Chunk normally, or multiple if text exceeds MAX_CHUNK_CHARS."""
+) -> Chunk | None:
+    """Create a single Chunk from already-assembled text. Returns None if too short."""
     text = clean_text_for_rag(text.strip())
     if len(text) < MIN_CHUNK_CHARS:
-        return []
+        return None
+    return Chunk(
+        chunk_id=f"{source}:chunk:{index:05d}",
+        source=source,
+        text=text,
+        page_start=page_start,
+        page_end=page_end,
+        section_id=section.section_id if section else None,
+        section_path=section.heading_path if section else tuple(),
+        chunk_type=chunk_type,
+    )
 
-    def _make_one(t: str, idx: int) -> Chunk:
-        return Chunk(
-            chunk_id=f"{source}:chunk:{idx:05d}",
-            source=source,
-            text=t,
+
+def split_and_emit(
+    section: Section,
+    body: str,
+    page_start: int,
+    page_end: int,
+    chunk_type: str,
+    index_start: int,
+    chunk_size: int,
+    overlap: int,
+) -> tuple[list[Chunk], int]:
+    """Split body if needed, prepend breadcrumb+heading to every piece, emit chunks.
+
+    By splitting the body *before* prepending context, every emitted chunk
+    is self-contained — even pieces 2, 3, ... of an oversized section carry
+    the breadcrumb and heading that identify their topic.
+    """
+    # Build the fixed context header that goes on every piece
+    breadcrumb = build_breadcrumb(section)
+    heading = section.heading_raw or ""
+    header_parts = [p for p in [breadcrumb, heading] if p]
+    header = "\n\n".join(header_parts)
+
+    # Enforce a hard cap on the header so body always has room.
+    # PDF misparsing sometimes produces multi-kilobyte "headings" (e.g. a table
+    # flattened into a single heading line).  Reserve at least chunk_size chars
+    # for the body so that every emitted chunk stays ≤ MAX_CHUNK_CHARS.
+    _max_header = MAX_CHUNK_CHARS - chunk_size - 2  # -2 for the "\n\n" separator
+    if len(header) > _max_header:
+        header = header[:_max_header - 1] + "…"
+
+    # How much of MAX_CHUNK_CHARS remains for the body?
+    header_cost = len(header) + 2 if header else 0  # +2 for the separating "\n\n"
+    body_budget = MAX_CHUNK_CHARS - header_cost  # always ≥ chunk_size
+
+    body = body.strip()
+    if len(body) <= body_budget:
+        pieces = [body]
+    else:
+        # Split using body_budget so each piece fits when header is prepended
+        pieces = [p for p in chunk_text(body, body_budget, overlap) if p.strip()]
+
+    result: list[Chunk] = []
+    idx = index_start
+    for piece in pieces:
+        piece = piece.strip()
+        if not piece:
+            continue
+        full_text = (header + "\n\n" + piece) if header else piece
+        chunk = make_chunk(
+            source=section.source,
+            text=full_text,
             page_start=page_start,
             page_end=page_end,
-            section_id=section.section_id if section else None,
-            section_path=section.heading_path if section else tuple(),
+            section=section,
             chunk_type=chunk_type,
+            index=idx,
         )
-
-    if len(text) <= MAX_CHUNK_CHARS:
-        return [_make_one(text, index)]
-
-    # Hard cap exceeded — split into overlapping windows and emit each piece.
-    pieces = [p for p in chunk_text(text, chunk_size, overlap) if len(p) >= MIN_CHUNK_CHARS]
-    return [_make_one(piece, index + i) for i, piece in enumerate(pieces)]
+        if chunk:
+            result.append(chunk)
+            idx += 1
+    return result, idx
 
 
 def chunk_section(
@@ -818,33 +870,29 @@ def chunk_section(
         return [], chunk_index_start
 
     if len(rendered) <= max_section_chars:
-        result = make_chunk(
-            source=section.source,
-            text=prepend_breadcrumb(section, rendered),
+        return split_and_emit(
+            section=section,
+            body=section.body_text(),
             page_start=section.page_start,
             page_end=section.page_end,
-            section=section,
             chunk_type="section",
-            index=chunk_index_start,
+            index_start=chunk_index_start,
             chunk_size=chunk_size,
             overlap=overlap,
         )
-        return result, chunk_index_start + len(result)
 
     blocks = split_section_into_blocks(section)
     if not blocks:
-        result = make_chunk(
-            source=section.source,
-            text=prepend_breadcrumb(section, rendered),
+        return split_and_emit(
+            section=section,
+            body=section.body_text(),
             page_start=section.page_start,
             page_end=section.page_end,
-            section=section,
             chunk_type="section",
-            index=chunk_index_start,
+            index_start=chunk_index_start,
             chunk_size=chunk_size,
             overlap=overlap,
         )
-        return result, chunk_index_start + len(result)
 
     expanded_blocks: list[Block] = []
     for block in blocks:
@@ -862,21 +910,18 @@ def chunk_section(
         if not current_texts or current_page_start is None or current_page_end is None:
             return
         body = "\n\n".join(current_texts).strip()
-        chunk_text_body = prepend_breadcrumb(section, render_chunk_body(section.heading_raw, body))
         chunk_type = current_types.pop() if len(current_types) == 1 else "mixed"
-        result = make_chunk(
-            source=section.source,
-            text=chunk_text_body,
+        new_chunks, next_index = split_and_emit(
+            section=section,
+            body=body,
             page_start=current_page_start,
             page_end=current_page_end,
-            section=section,
             chunk_type=chunk_type,
-            index=next_index,
+            index_start=next_index,
             chunk_size=chunk_size,
             overlap=overlap,
         )
-        chunks.extend(result)
-        next_index += len(result)
+        chunks.extend(new_chunks)
         current_texts = []
         current_types = set()
         current_page_start = None
