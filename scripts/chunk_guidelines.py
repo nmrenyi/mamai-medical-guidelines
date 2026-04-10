@@ -1,21 +1,17 @@
 """
 chunk_guidelines.py — Chunk normalized guideline markdowns for RAG ingestion.
 
-The default strategy is structure-first:
+Strategy: structure-first.
 1. Parse markdown into heading-aware sections while tracking page markers as
    metadata.
 2. Emit one chunk per section when the section is reasonably sized.
 3. Subdivide only oversized sections, preferring block boundaries (paragraphs,
    lists, tables) before falling back to overlapping text windows.
 
-The legacy page-first strategy is still available via --strategy legacy for
-comparison. Both strategies write the same <sep>-delimited output format:
+Output format (<sep>-delimited, compatible with Android's memorizeChunks()):
 
     <sep>[SOURCE:WHO_PositiveBirth_2018|PAGE:42]
     chunk content...
-
-That keeps the output compatible with Android's memorizeChunks() and with
-build_embeddings.py.
 """
 
 import argparse
@@ -121,8 +117,6 @@ class Chunk:
     section_id: str | None
     section_path: tuple[str, ...]
     chunk_type: str
-    strategy: str
-
     def prefixed_text(self) -> str:
         return f"[SOURCE:{self.source}|PAGE:{self.page_start}]\n{self.text}"
 
@@ -203,29 +197,6 @@ def detect_heading(line: LineSpan) -> tuple[int, str, str] | None:
 
     return None
 
-
-def split_into_pages(text: str) -> list[tuple[int, str]]:
-    """Legacy page-first splitter kept for compatibility and comparison."""
-    pages = []
-    current_page = 1
-    current_content: list[str] = []
-
-    for line in text.splitlines():
-        marker = PAGE_MARKER.match(line.strip())
-        if marker:
-            content = "\n".join(current_content).strip()
-            if content:
-                pages.append((current_page, content))
-            current_page = int(marker.group(1))
-            current_content = []
-        else:
-            current_content.append(line)
-
-    content = "\n".join(current_content).strip()
-    if content:
-        pages.append((current_page, content))
-
-    return pages
 
 
 def chunk_text(text: str, chunk_size: int, overlap: int) -> list[str]:
@@ -555,7 +526,6 @@ def make_chunk(
     page_end: int,
     section: Section | None,
     chunk_type: str,
-    strategy: str,
     index: int,
 ) -> Chunk | None:
     text = text.strip()
@@ -570,7 +540,6 @@ def make_chunk(
         section_id=section.section_id if section else None,
         section_path=section.heading_path if section else tuple(),
         chunk_type=chunk_type,
-        strategy=strategy,
     )
 
 
@@ -579,7 +548,6 @@ def chunk_section(
     chunk_size: int,
     overlap: int,
     max_section_chars: int,
-    strategy: str,
     chunk_index_start: int,
 ) -> tuple[list[Chunk], int]:
     rendered = section.render()
@@ -594,7 +562,6 @@ def chunk_section(
             page_end=section.page_end,
             section=section,
             chunk_type="section",
-            strategy=strategy,
             index=chunk_index_start,
         )
         return ([chunk] if chunk else []), chunk_index_start + (1 if chunk else 0)
@@ -608,7 +575,6 @@ def chunk_section(
             page_end=section.page_end,
             section=section,
             chunk_type="section",
-            strategy=strategy,
             index=chunk_index_start,
         )
         return ([chunk] if chunk else []), chunk_index_start + (1 if chunk else 0)
@@ -638,7 +604,6 @@ def chunk_section(
             page_end=current_page_end,
             section=section,
             chunk_type=chunk_type,
-            strategy=strategy,
             index=next_index,
         )
         if chunk:
@@ -675,34 +640,6 @@ def chunk_section(
     return chunks, next_index
 
 
-def process_file_legacy(
-    md_path: Path,
-    chunk_size: int,
-    overlap: int,
-    chunk_index_start: int,
-) -> tuple[list[Chunk], int]:
-    """Legacy page-first chunker preserved for side-by-side comparisons."""
-    pages = split_into_pages(md_path.read_text(encoding="utf-8"))
-    chunks: list[Chunk] = []
-    next_index = chunk_index_start
-
-    for page_num, page_content in pages:
-        for piece in chunk_text(page_content, chunk_size, overlap):
-            chunk = make_chunk(
-                source=md_path.stem,
-                text=piece,
-                page_start=page_num,
-                page_end=page_num,
-                section=None,
-                chunk_type="page",
-                strategy="legacy",
-                index=next_index,
-            )
-            if chunk:
-                chunks.append(chunk)
-                next_index += 1
-
-    return chunks, next_index
 
 
 def process_file_structured(
@@ -722,7 +659,6 @@ def process_file_structured(
             chunk_size=chunk_size,
             overlap=overlap,
             max_section_chars=max_section_chars,
-            strategy="structured",
             chunk_index_start=next_index,
         )
         chunks.extend(section_chunks)
@@ -770,7 +706,6 @@ def write_sidecar(chunks: list[Chunk], sidecar_path: Path) -> None:
                 "section_id": chunk.section_id,
                 "section_path": list(chunk.section_path),
                 "chunk_type": chunk.chunk_type,
-                "strategy": chunk.strategy,
                 "text": chunk.text,
             }
             handle.write(json.dumps(record, ensure_ascii=False) + "\n")
@@ -820,12 +755,6 @@ def main() -> None:
         help="Allow whole sections up to this size before subdividing (default: 1500)",
     )
     parser.add_argument(
-        "--strategy",
-        choices=("structured", "legacy"),
-        default="structured",
-        help="Chunking strategy to use (default: structured)",
-    )
-    parser.add_argument(
         "--jsonl-sidecar",
         help="Optional JSONL sidecar path for richer chunk metadata",
     )
@@ -850,21 +779,13 @@ def main() -> None:
         bar = "█" * filled + "░" * (bar_width - filled)
         print(f"\r[{bar}] {i}/{total}  {md_path.stem[:40]:<40}", end="", flush=True)
 
-        if args.strategy == "legacy":
-            chunks, next_chunk_index = process_file_legacy(
-                md_path=md_path,
-                chunk_size=args.chunk_size,
-                overlap=args.overlap,
-                chunk_index_start=next_chunk_index,
-            )
-        else:
-            chunks, next_chunk_index = process_file_structured(
-                md_path=md_path,
-                chunk_size=args.chunk_size,
-                overlap=args.overlap,
-                max_section_chars=args.max_section_chars,
-                chunk_index_start=next_chunk_index,
-            )
+        chunks, next_chunk_index = process_file_structured(
+            md_path=md_path,
+            chunk_size=args.chunk_size,
+            overlap=args.overlap,
+            max_section_chars=args.max_section_chars,
+            chunk_index_start=next_chunk_index,
+        )
 
         all_chunks.extend(chunks)
         print(f"\r  [{i:>2}/{total}] {md_path.name:<45} {len(chunks):>4} chunks")
