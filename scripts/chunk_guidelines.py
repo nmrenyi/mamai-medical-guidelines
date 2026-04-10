@@ -54,10 +54,12 @@ EMPHASIS_RE = re.compile(r"[*_`~]+")
 SUP_RE = re.compile(r"<sup[^>]*>.*?</sup>", re.IGNORECASE | re.DOTALL)
 BR_RE = re.compile(r"<br\s*/?>", re.IGNORECASE)
 INTERNAL_LINK_RE = re.compile(r"\[([^\]]+)\]\(#[^)]*\)")
+MANUAL_INDEX_REF_RE = re.compile(r"\b[A-Z]-\d+(?:[\-–]\d+)?\b")
 
-BOILERPLATE_HEADING_PATTERNS = (
+BOILERPLATE_SECTION_PATTERNS = (
     "contents",
     "table of contents",
+    "index",
     "acknowledg",
     "glossary",
     "acronym",
@@ -68,6 +70,77 @@ BOILERPLATE_HEADING_PATTERNS = (
     "preface",
     "disclaimer",
     "list participants",
+    "contributors",
+    "your responsibility",
+    "recommendations for research",
+    "key recommendations for research",
+    "other recommendations for research",
+    "declarations of conflicts",
+    "declarations of conflict",
+    "conflict of interest",
+    "conflicts of interest",
+    "guideline development group members",
+    "members of the guideline development group",
+    "members of the who steering group",
+    "members of the who secretariat",
+    "membership of the programme development group",
+    "membership of the guideline committee",
+    "programme development group",
+    "nice project team",
+    "external contractors",
+    "external experts and who staff involved in the preparation of this guideline",
+    "external resource experts",
+    "who secretariat",
+    "evidence secretariat",
+    "guideline working party",
+    "stakeholder consultation",
+    "committee details",
+    "update information",
+)
+
+BOILERPLATE_SUBTREE_PATTERNS = (
+    "contents",
+    "table of contents",
+    "index",
+    "acknowledg",
+    "glossary",
+    "acronym",
+    "abbreviat",
+    "foreword",
+    "preface",
+    "disclaimer",
+    "list participants",
+    "contributors",
+    "your responsibility",
+    "recommendations for research",
+    "key recommendations for research",
+    "other recommendations for research",
+    "guideline development group members",
+    "members of the guideline development group",
+    "members of the who steering group",
+    "members of the who secretariat",
+    "membership of the programme development group",
+    "membership of the guideline committee",
+    "programme development group",
+    "nice project team",
+    "external contractors",
+    "external experts and who staff involved in the preparation of this guideline",
+    "external resource experts",
+    "who secretariat",
+    "evidence secretariat",
+    "guideline working party",
+    "stakeholder consultation",
+    "committee details",
+    "update information",
+)
+
+TEMPLATE_SECTION_PATTERNS = (
+    re.compile(r"\bforms?\b"),
+    re.compile(r"\bchecklists?\b"),
+    re.compile(r"\brecord forms?\b"),
+    re.compile(r"\breport forms?\b"),
+    re.compile(r"\bobservation charts?\b"),
+    re.compile(r"\blogs?\b"),
 )
 
 
@@ -139,6 +212,7 @@ def clean_text_for_rag(text: str) -> str:
     text = BR_RE.sub(" ", text)                  # <br> → space
     text = HTML_TAG_RE.sub("", text)             # any remaining HTML tags
     text = INTERNAL_LINK_RE.sub(r"\1", text)     # [text](#anchor) → text
+    text = strip_footer_artifacts(text)
     text = re.sub(r"[ \t]{2,}", " ", text)       # collapse runs of spaces
     return text
 
@@ -173,8 +247,110 @@ def has_blank_data_rows(body: str) -> bool:
     return blank_rows / data_rows > 0.5
 
 
+def is_sparse_template_table(section: Section) -> bool:
+    """Return True for table-dominant form/checklist templates with mostly blank cells."""
+    heading_candidates = " ".join(section.heading_path) if section.heading_path else (section.heading_text or "")
+    heading_norm = normalize_heading_text(heading_candidates)
+    if not any(pattern.search(heading_norm) for pattern in TEMPLATE_SECTION_PATTERNS):
+        return False
+
+    lines = [line.rstrip() for line in section.body_text().splitlines() if line.strip()]
+    if not lines:
+        return False
+
+    table_lines = [line for line in lines if line.startswith("|") and line.endswith("|")]
+    if len(table_lines) < 3:
+        return False
+    if len(table_lines) / len(lines) < 0.7:
+        return False
+
+    data_rows = 0
+    max_cols = 0
+    total_cells = 0
+    nonempty_cells = 0
+
+    for line in table_lines:
+        cells = [HTML_TAG_RE.sub("", cell).strip() for cell in line.strip("|").split("|")]
+        if all(re.match(r"^[-: ]+$", cell) for cell in cells):
+            continue
+        data_rows += 1
+        max_cols = max(max_cols, len(cells))
+        total_cells += len(cells)
+        nonempty_cells += sum(bool(cell) for cell in cells)
+
+    if data_rows == 0 or total_cells == 0:
+        return True
+
+    fill_ratio = nonempty_cells / total_cells
+    return max_cols >= 5 and fill_ratio < 0.45
+
+
+def is_footer_like_line(line: str) -> bool:
+    normalized = strip_inline_markdown(line.replace("|", " ")).strip().lower()
+    if not normalized:
+        return False
+    if re.fullmatch(r"_+", normalized):
+        return True
+    if normalized.startswith("revision no."):
+        return True
+    if re.fullmatch(r"page\s+[ivxlcdm\d]+\s+of\s+\d+", normalized):
+        return True
+    if re.fullmatch(r"revision\s+no\.\s*\d+\s+page\s+[ivxlcdm\d]+\s+of\s+\d+", normalized):
+        return True
+    return False
+
+
+def is_empty_table_artifact_line(line: str) -> bool:
+    stripped = line.strip()
+    if not stripped:
+        return True
+    if re.fullmatch(r"\|?[-:\s|]+\|?", stripped):
+        return True
+    if stripped.startswith("|") and stripped.endswith("|"):
+        cells = [cell.strip() for cell in stripped.strip("|").split("|")]
+        return all(not cell for cell in cells)
+    return False
+
+
+def strip_footer_artifacts(text: str) -> str:
+    lines = text.splitlines()
+    kept: list[str] = []
+    i = 0
+
+    while i < len(lines):
+        line = lines[i]
+        if is_footer_like_line(line):
+            i += 1
+            while i < len(lines) and is_empty_table_artifact_line(lines[i]):
+                i += 1
+            continue
+        kept.append(line)
+        i += 1
+
+    cleaned = "\n".join(kept)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    return cleaned.strip()
+
+
+def looks_like_manual_index(section: Section) -> bool:
+    rendered = strip_inline_markdown(section.render())
+    if len(MANUAL_INDEX_REF_RE.findall(rendered)) < 5:
+        return False
+
+    heading = strip_inline_markdown(section.heading_text or "")
+    heading_is_indexish = bool(heading) and heading == heading.upper() and len(heading) <= 24
+    return heading_is_indexish or "see also" in rendered.lower()
+
+
 def normalize_heading_text(text: str) -> str:
     return strip_inline_markdown(text).strip(": ").lower()
+
+
+def heading_matches(text: str | None, patterns: tuple[str, ...]) -> bool:
+    if not text:
+        return False
+    normalized = normalize_heading_text(text)
+    return any(pattern in normalized for pattern in patterns)
 
 
 def looks_like_heading_text(text: str) -> bool:
@@ -364,9 +540,11 @@ def looks_like_table_of_contents(text: str) -> bool:
 
 def should_skip_section(section: Section) -> bool:
     """Skip only obvious boilerplate sections; keep the rest intact."""
-    if section.heading_text:
-        normalized = normalize_heading_text(section.heading_text)
-        if any(pattern in normalized for pattern in BOILERPLATE_HEADING_PATTERNS):
+    if heading_matches(section.heading_text, BOILERPLATE_SECTION_PATTERNS):
+        return True
+
+    for heading in section.heading_path[:-1]:
+        if heading_matches(heading, BOILERPLATE_SUBTREE_PATTERNS):
             return True
 
     # Heading-only sections have no body of their own — their heading is
@@ -377,6 +555,10 @@ def should_skip_section(section: Section) -> bool:
 
     # Pure tables with all-blank data rows are blank form templates — no value.
     if has_blank_data_rows(section.body_text()):
+        return True
+    if is_sparse_template_table(section):
+        return True
+    if looks_like_manual_index(section):
         return True
 
     rendered = section.render()
