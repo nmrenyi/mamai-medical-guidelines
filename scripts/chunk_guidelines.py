@@ -51,6 +51,9 @@ LIST_ITEM_RE = re.compile(r"^\s*(?:[-*+]\s+|\d+[.)]\s+)")
 LINK_RE = re.compile(r"\[([^\]]+)\]\([^)]+\)")
 HTML_TAG_RE = re.compile(r"<[^>]+>")
 EMPHASIS_RE = re.compile(r"[*_`~]+")
+SUP_RE = re.compile(r"<sup[^>]*>.*?</sup>", re.IGNORECASE | re.DOTALL)
+BR_RE = re.compile(r"<br\s*/?>", re.IGNORECASE)
+INTERNAL_LINK_RE = re.compile(r"\[([^\]]+)\]\(#[^)]*\)")
 
 BOILERPLATE_HEADING_PATTERNS = (
     "contents",
@@ -128,6 +131,46 @@ def strip_inline_markdown(text: str) -> str:
     text = EMPHASIS_RE.sub("", text)
     text = re.sub(r"\s+", " ", text)
     return text.strip()
+
+
+def clean_text_for_rag(text: str) -> str:
+    """Strip HTML artifacts and dead links that survive into chunk text."""
+    text = SUP_RE.sub("", text)                  # <sup>3</sup> footnote refs
+    text = BR_RE.sub(" ", text)                  # <br> → space
+    text = HTML_TAG_RE.sub("", text)             # any remaining HTML tags
+    text = INTERNAL_LINK_RE.sub(r"\1", text)     # [text](#anchor) → text
+    text = re.sub(r"[ \t]{2,}", " ", text)       # collapse runs of spaces
+    return text
+
+
+def has_blank_data_rows(body: str) -> bool:
+    """Return True if body is a pure table where >50% of data rows are all-blank.
+
+    This detects blank form templates (e.g. an empty 'Health Facility:' table)
+    that have no retrieval value.  Clinical tables with occasional blank
+    separator rows (common in large outcome tables) are NOT filtered because
+    those blank rows are a small fraction of the total.
+    """
+    lines = [l.rstrip() for l in body.splitlines() if l.strip()]
+    if not lines:
+        return False
+    # Must be entirely table lines — any paragraph text disqualifies
+    if not all(l.startswith("|") and l.endswith("|") for l in lines):
+        return False
+    data_rows = 0
+    blank_rows = 0
+    for line in lines:
+        cells = [c.strip() for c in line.strip("|").split("|")]
+        # Skip separator rows (|---|---|)
+        if all(re.match(r"^[-: ]+$", c) for c in cells):
+            continue
+        data_rows += 1
+        clean = [HTML_TAG_RE.sub("", c).strip() for c in cells]
+        if all(not c for c in clean):
+            blank_rows += 1
+    if data_rows == 0:
+        return True  # nothing but separators
+    return blank_rows / data_rows > 0.5
 
 
 def normalize_heading_text(text: str) -> str:
@@ -332,6 +375,10 @@ def should_skip_section(section: Section) -> bool:
     if not section.body_text().strip():
         return True
 
+    # Pure tables with all-blank data rows are blank form templates — no value.
+    if has_blank_data_rows(section.body_text()):
+        return True
+
     rendered = section.render()
     if not rendered:
         return True
@@ -534,7 +581,7 @@ def make_chunk(
     chunk_type: str,
     index: int,
 ) -> Chunk | None:
-    text = text.strip()
+    text = clean_text_for_rag(text.strip())
     if len(text) < MIN_CHUNK_CHARS:
         return None
     return Chunk(
