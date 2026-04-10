@@ -22,7 +22,7 @@ from exclusions import EXCLUDE, DEDUP
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 RAW_DIR = PROJECT_ROOT / "raw" / "Clinical guidelines_International" / "Clinical guidelines_with highlights"
-OUTPUT_DIR = PROJECT_ROOT / "processed" / "markdown"
+OUTPUT_DIR = PROJECT_ROOT / "processed" / "extracted" / "international"
 
 # marker-pdf embeds {N}-{48 dashes} as physical page boundary markers when
 # paginate_output=True (e.g. "{0}------------------------------------------------").

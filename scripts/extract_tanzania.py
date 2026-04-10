@@ -27,7 +27,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 RAW_DIR = PROJECT_ROOT / "raw" / "Clinical guidelines_Zanzibar-Tanzania"
-OUTPUT_DIR = PROJECT_ROOT / "processed" / "markdown" / "tanzania"
+OUTPUT_DIR = PROJECT_ROOT / "processed" / "extracted" / "tanzania"
 
 # marker-pdf embeds {N}-{48 dashes} as physical page boundary markers when
 # paginate_output=True (e.g. "{0}------------------------------------------------").

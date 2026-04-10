@@ -199,8 +199,8 @@ def main():
     args = parser.parse_args()
 
     project_root = Path(__file__).resolve().parent.parent
-    intl_dir     = project_root / "processed" / "markdowns" / "international"
-    tanzania_dir = project_root / "processed" / "markdowns" / "tanzania"
+    intl_dir     = project_root / "processed" / "normalized" / "international"
+    tanzania_dir = project_root / "processed" / "normalized" / "tanzania"
     output_path  = project_root / args.output
 
     intl_files     = sorted(intl_dir.glob("*.md"))     if intl_dir.exists()     else []

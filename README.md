@@ -14,22 +14,27 @@ raw/
   Clinical guidelines_Zanzibar-Tanzania/  # 19 Tanzania/Zanzibar guideline PDFs (gitignored)
 
 scripts/
-  extract_to_markdown.py   # convert international PDFs → markdown via marker-pdf
-  extract_tanzania.py      # convert Tanzania PDFs → markdown via marker-pdf
+  extract_to_markdown.py   # [step 1] convert international PDFs → markdown via marker-pdf
+  extract_tanzania.py      # [step 1] convert Tanzania PDFs → markdown via marker-pdf
   submit_extraction.sh     # run international extraction on LiGHT H100 cluster
   submit_tanzania.sh       # run Tanzania extraction on LiGHT H100 cluster
   exclusions.py            # PDFs to skip or deduplicate
-  chunk_guidelines.py      # chunk markdowns into RAG passages (reads <!-- page: N --> markers)
+  strip_spans.py           # [step 2] strip HTML span tags from extracted markdowns
+  chunk_guidelines.py      # [step 3] chunk normalized markdowns into RAG passages
+  build_embeddings.py      # [step 4] embed chunks with Gecko TFLite model
+
+Makefile                   # orchestrates steps 2–4 (step 1 runs on cluster)
 
 processed/                 # gitignored — generated outputs
-  markdowns/
-    international/         # 39 marker-pdf markdowns, one per PDF
-    tanzania/              # 18 marker-pdf markdowns, one per PDF
-  legacy_pymupdf/          # old outputs from deprecated PyMuPDF path (stale)
-    chunks_for_rag.txt
-    embeddings.sqlite
-  chunks_for_rag.txt       # TODO: regenerate from marker-pdf markdowns
-  embeddings.sqlite        # TODO: regenerate from marker-pdf chunks
+  extracted/
+    international/         # [step 1] 39 marker-pdf markdowns, one per PDF
+    tanzania/              # [step 1] 18 marker-pdf markdowns, one per PDF
+  normalized/
+    international/         # [step 2] span-stripped markdowns
+    tanzania/              # [step 2] span-stripped markdowns
+  chunks_for_rag.txt       # [step 3] RAG passages with source/page metadata
+  embeddings.sqlite        # [step 4] Gecko embeddings for on-device search
+  legacy_pymupdf/          # deprecated PyMuPDF outputs (stale, kept for reference)
 ```
 
 ---
@@ -56,31 +61,44 @@ runai logs mamai-extract-tz -f
 Pull results:
 ```bash
 rsync -av --include="*.md" --exclude="tanzania/" --exclude="*/" \
-  "light:/mnt/light/scratch/users/yiren/mamai-medical-guidelines/processed/markdown/" \
-  "processed/markdowns/international/"
+  "light:/mnt/light/scratch/users/yiren/mamai-medical-guidelines/processed/extracted/" \
+  "processed/extracted/international/"
 
 rsync -av \
-  "light:/mnt/light/scratch/users/yiren/mamai-medical-guidelines/processed/markdown/tanzania/" \
-  "processed/markdowns/tanzania/"
+  "light:/mnt/light/scratch/users/yiren/mamai-medical-guidelines/processed/extracted/tanzania/" \
+  "processed/extracted/tanzania/"
 ```
 
-### Step 2 — Markdown → Chunks (TODO)
+### Step 2 — Normalize (TODO)
 
-Run `chunk_guidelines.py` on the marker-pdf markdowns to generate `chunks_for_rag.txt`:
+Strip HTML span tags left by marker-pdf from the extracted markdowns:
 
 ```bash
-python scripts/chunk_guidelines.py
+make processed/normalized
+# or: python scripts/strip_spans.py
+```
+
+Reads from `processed/extracted/`, writes to `processed/normalized/`. Originals are not modified.
+
+### Step 3 — Markdown → Chunks (TODO)
+
+Chunk the normalized markdowns into RAG passages:
+
+```bash
+make processed/chunks_for_rag.txt
+# or: python scripts/chunk_guidelines.py
 ```
 
 **File selection logic:**
 - **International** (39 PDFs): only the 24 HIGH-relevance files are included by default; executive summaries that duplicate full guidelines are also skipped. Pass `--all` to include everything.
 - **Tanzania** (18 PDFs): all files are always included — no relevance filtering, since these are regional guidelines specifically relevant to the deployment context.
 
-The output paths (`processed/markdowns/international/` and `processed/markdowns/tanzania/`) are already hardcoded in the script and match the current directory layout.
+### Step 4 — Chunks → Embeddings (TODO)
 
-### Step 3 — Chunks → Embeddings (TODO)
-
-Re-run the embedding pipeline on the new chunks to regenerate `embeddings.sqlite`.
+```bash
+make  # runs the full local pipeline (steps 2–4)
+# or: python scripts/build_embeddings.py
+```
 
 ---
 
