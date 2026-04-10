@@ -461,6 +461,22 @@ def render_chunk_body(heading_raw: str | None, body_text: str) -> str:
     return "\n\n".join(parts).strip()
 
 
+def build_breadcrumb(section: Section) -> str | None:
+    """Return a '> Parent > Child' breadcrumb for ancestor headings, or None if top-level."""
+    parents = section.heading_path[:-1]
+    if not parents:
+        return None
+    return "> " + " > ".join(parents)
+
+
+def prepend_breadcrumb(section: Section, text: str) -> str:
+    """Prepend the parent heading path to chunk text so each chunk is self-contained."""
+    breadcrumb = build_breadcrumb(section)
+    if not breadcrumb:
+        return text
+    return breadcrumb + "\n\n" + text
+
+
 def split_table_block(block: Block, max_chars: int) -> list[Block]:
     """Split a large markdown table into row groups while repeating the header."""
     lines = [line for line in block.text.splitlines() if line.strip()]
@@ -610,7 +626,7 @@ def chunk_section(
     if len(rendered) <= max_section_chars:
         chunk = make_chunk(
             source=section.source,
-            text=rendered,
+            text=prepend_breadcrumb(section, rendered),
             page_start=section.page_start,
             page_end=section.page_end,
             section=section,
@@ -624,7 +640,7 @@ def chunk_section(
     if not blocks:
         chunk = make_chunk(
             source=section.source,
-            text=rendered,
+            text=prepend_breadcrumb(section, rendered),
             page_start=section.page_start,
             page_end=section.page_end,
             section=section,
@@ -650,7 +666,7 @@ def chunk_section(
         if not current_texts or current_page_start is None or current_page_end is None:
             return
         body = "\n\n".join(current_texts).strip()
-        chunk_text_body = render_chunk_body(section.heading_raw, body)
+        chunk_text_body = prepend_breadcrumb(section, render_chunk_body(section.heading_raw, body))
         chunk_type = current_types.pop() if len(current_types) == 1 else "mixed"
         chunk = make_chunk(
             source=section.source,
