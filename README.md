@@ -109,10 +109,21 @@ The pipeline:
      - **Paragraphs**: split at `\n\n` breaks
      - **Fallback**: overlapping 800-char windows with 100-char overlap
 
-5. **Prefix metadata** — every chunk is written as:
+5. **Prepend parent breadcrumb** — each chunk is prefixed with its ancestor heading path so it is self-contained for retrieval. A leaf-level chunk under `Recommendations > 1.2 Service organisation` becomes:
+   ```
+   > Recommendations > 1.2 Service organisation
+
+   ### All women at low risk of complications
+   - 1.3.1 Explain to both multiparous and nulliparous women...
+   ```
+   This lets a query for a broad topic (e.g. "service organisation") match leaf-level chunks that would otherwise lack the parent context. Top-level sections (no parent) get no breadcrumb.
+
+6. **Write output** — every chunk is written as:
    ```
    <sep>[SOURCE:NICE_intrapartum_2023|PAGE:14]
-   ## 1.4 Care throughout labour
+   > Recommendations > 1.2 Service organisation
+
+   ### All women at low risk of complications
    Women should be offered...
    ```
    The `<sep>` delimiter and `[SOURCE:|PAGE:]` prefix are parsed by `RagPipeline.kt` in the Android app.
