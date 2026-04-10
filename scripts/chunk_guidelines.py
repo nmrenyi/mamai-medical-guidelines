@@ -35,6 +35,11 @@ SKIP_FILES = {
 # Minimum chunk character length — shorter chunks are discarded.
 MIN_CHUNK_CHARS = 80
 
+# Hard upper bound on any emitted chunk. Text beyond this is split with
+# overlapping windows before being stored. Gecko's token limit is 1024
+# (~4000 chars at 4 chars/token); 2500 gives comfortable headroom.
+MAX_CHUNK_CHARS = 2500
+
 # Let full sections stay intact up to this length before subdividing them into
 # smaller retrieval chunks. This is intentionally larger than CHUNK_SIZE so a
 # complete recommendation block can survive as one coherent chunk.
@@ -773,20 +778,32 @@ def make_chunk(
     section: Section | None,
     chunk_type: str,
     index: int,
-) -> Chunk | None:
+    chunk_size: int = 800,
+    overlap: int = 100,
+) -> list[Chunk]:
+    """Return one Chunk normally, or multiple if text exceeds MAX_CHUNK_CHARS."""
     text = clean_text_for_rag(text.strip())
     if len(text) < MIN_CHUNK_CHARS:
-        return None
-    return Chunk(
-        chunk_id=f"{source}:chunk:{index:05d}",
-        source=source,
-        text=text,
-        page_start=page_start,
-        page_end=page_end,
-        section_id=section.section_id if section else None,
-        section_path=section.heading_path if section else tuple(),
-        chunk_type=chunk_type,
-    )
+        return []
+
+    def _make_one(t: str, idx: int) -> Chunk:
+        return Chunk(
+            chunk_id=f"{source}:chunk:{idx:05d}",
+            source=source,
+            text=t,
+            page_start=page_start,
+            page_end=page_end,
+            section_id=section.section_id if section else None,
+            section_path=section.heading_path if section else tuple(),
+            chunk_type=chunk_type,
+        )
+
+    if len(text) <= MAX_CHUNK_CHARS:
+        return [_make_one(text, index)]
+
+    # Hard cap exceeded — split into overlapping windows and emit each piece.
+    pieces = [p for p in chunk_text(text, chunk_size, overlap) if len(p) >= MIN_CHUNK_CHARS]
+    return [_make_one(piece, index + i) for i, piece in enumerate(pieces)]
 
 
 def chunk_section(
@@ -801,7 +818,7 @@ def chunk_section(
         return [], chunk_index_start
 
     if len(rendered) <= max_section_chars:
-        chunk = make_chunk(
+        result = make_chunk(
             source=section.source,
             text=prepend_breadcrumb(section, rendered),
             page_start=section.page_start,
@@ -809,12 +826,14 @@ def chunk_section(
             section=section,
             chunk_type="section",
             index=chunk_index_start,
+            chunk_size=chunk_size,
+            overlap=overlap,
         )
-        return ([chunk] if chunk else []), chunk_index_start + (1 if chunk else 0)
+        return result, chunk_index_start + len(result)
 
     blocks = split_section_into_blocks(section)
     if not blocks:
-        chunk = make_chunk(
+        result = make_chunk(
             source=section.source,
             text=prepend_breadcrumb(section, rendered),
             page_start=section.page_start,
@@ -822,8 +841,10 @@ def chunk_section(
             section=section,
             chunk_type="section",
             index=chunk_index_start,
+            chunk_size=chunk_size,
+            overlap=overlap,
         )
-        return ([chunk] if chunk else []), chunk_index_start + (1 if chunk else 0)
+        return result, chunk_index_start + len(result)
 
     expanded_blocks: list[Block] = []
     for block in blocks:
@@ -843,7 +864,7 @@ def chunk_section(
         body = "\n\n".join(current_texts).strip()
         chunk_text_body = prepend_breadcrumb(section, render_chunk_body(section.heading_raw, body))
         chunk_type = current_types.pop() if len(current_types) == 1 else "mixed"
-        chunk = make_chunk(
+        result = make_chunk(
             source=section.source,
             text=chunk_text_body,
             page_start=current_page_start,
@@ -851,10 +872,11 @@ def chunk_section(
             section=section,
             chunk_type=chunk_type,
             index=next_index,
+            chunk_size=chunk_size,
+            overlap=overlap,
         )
-        if chunk:
-            chunks.append(chunk)
-            next_index += 1
+        chunks.extend(result)
+        next_index += len(result)
         current_texts = []
         current_types = set()
         current_page_start = None
