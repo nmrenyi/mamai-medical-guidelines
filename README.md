@@ -103,11 +103,19 @@ The pipeline:
 
 4. **Emit or subdivide by size**:
    - Section ≤ 1500 chars → emitted as one chunk
-   - Section > 1500 chars → subdivided, preferring block boundaries in this order:
+   - Section > 1500 chars → each block type is split independently, then pieces are greedily packed into chunks up to 800 chars:
      - **Tables**: split by row groups, repeating the header row on each piece
      - **Lists**: split at top-level item boundaries
      - **Paragraphs**: split at `\n\n` breaks
      - **Fallback**: overlapping 800-char windows with 100-char overlap
+
+   Example — a section containing 1000-char paragraph + 2000-char table + 3000-char list:
+   ```
+   paragraph (1000) → 2 pieces × ~500 chars
+   table (2000)     → N row groups × ≤800 chars, each repeating the header
+   list (3000)      → M item groups × ≤800 chars
+   ```
+   Each piece is then packed with its neighbors: if two consecutive pieces fit within 800 chars they are merged into one chunk (marked `mixed`); otherwise each becomes its own chunk. Every chunk gets the section heading prepended.
 
 5. **Prepend parent breadcrumb** — each chunk is prefixed with its ancestor heading path so it is self-contained for retrieval. A leaf-level chunk under `Recommendations > 1.2 Service organisation` becomes:
    ```
