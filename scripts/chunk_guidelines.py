@@ -55,6 +55,11 @@ SUP_RE = re.compile(r"<sup[^>]*>.*?</sup>", re.IGNORECASE | re.DOTALL)
 BR_RE = re.compile(r"<br\s*/?>", re.IGNORECASE)
 INTERNAL_LINK_RE = re.compile(r"\[([^\]]+)\]\(#[^)]*\)")
 MANUAL_INDEX_REF_RE = re.compile(r"\b[A-Z]-\d+(?:[\-–]\d+)?\b")
+# Body text that is purely a cross-reference pointer, e.g. "Recommendations 1.2.15 to 1.2.22"
+XREF_ONLY_RE = re.compile(
+    r"^\s*Recommendations?\s+[\d.]+(?:\s*(?:,|and|to|–|-)\s*[\d.]+)*\.?\s*$",
+    re.IGNORECASE,
+)
 
 BOILERPLATE_SECTION_PATTERNS = (
     "contents",
@@ -553,6 +558,12 @@ def should_skip_section(section: Section) -> bool:
     if not section.body_text().strip():
         return True
 
+    # Cross-reference-only body: "Recommendations 1.2.15 to 1.2.22" with no
+    # actual content — just a pointer to the real recommendation text elsewhere.
+    # body_text() is raw markdown so strip links before matching.
+    if XREF_ONLY_RE.match(strip_inline_markdown(section.body_text())):
+        return True
+
     # Pure tables with all-blank data rows are blank form templates — no value.
     if has_blank_data_rows(section.body_text()):
         return True
@@ -1033,6 +1044,20 @@ def main() -> None:
     if not all_chunks:
         print("\nNo chunks produced — check that markdown files exist.")
         return
+
+    # Deduplicate by chunk body text, keeping first occurrence per source file.
+    # Repeated identical chunks arise from tables whose rows repeat verbatim
+    # across sections (e.g. a rubric table appearing 31× in a curriculum doc).
+    seen_texts: set[str] = set()
+    deduped: list[Chunk] = []
+    for chunk in all_chunks:
+        if chunk.text not in seen_texts:
+            seen_texts.add(chunk.text)
+            deduped.append(chunk)
+    n_dupes = len(all_chunks) - len(deduped)
+    if n_dupes:
+        print(f"Deduplication: removed {n_dupes} duplicate chunks ({len(deduped)} unique).")
+    all_chunks = deduped
 
     write_output(all_chunks, output_path)
     if sidecar_path is not None:
