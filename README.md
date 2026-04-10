@@ -89,8 +89,21 @@ make processed/chunks_for_rag.txt
 # or: python scripts/chunk_guidelines.py
 ```
 
+**Chunking strategy (default: `structured`)**
+
+The chunker uses a structure-first approach:
+
+1. **Split on headings** (`#`–`######` and standalone `**bold**` lines) — one section per heading, regardless of heading level. This keeps each clinical topic intact as a unit.
+2. **Page markers as metadata only** — `<!-- page: N -->` tags are tracked per line and attached to chunks as citations, but are never used as split points. Content that flows across a page boundary stays in one chunk.
+3. **Boilerplate filtering** — sections whose headings match patterns like "Contents", "Acknowledgements", "References", or whose body looks like a table of contents are discarded.
+4. **Size control** — sections ≤ 1500 chars are emitted as a single chunk. Larger sections are subdivided respecting block boundaries in order of preference: table rows (repeating the header), list items, paragraphs, then overlapping character windows as a last resort.
+
+Each chunk is prefixed with `[SOURCE:stem|PAGE:N]` for citation by the Android app.
+
+Use `--strategy legacy` to reproduce the old page-first behavior for side-by-side comparisons.
+
 **File selection logic:**
-- **International** (39 PDFs): only the 24 HIGH-relevance files are included by default; executive summaries that duplicate full guidelines are also skipped. Pass `--all` to include everything.
+- **International** (39 PDFs): only the 25 HIGH-relevance files are included by default; executive summaries that duplicate full guidelines are also skipped. Pass `--all` to include everything.
 - **Tanzania** (18 PDFs): all files are always included — no relevance filtering, since these are regional guidelines specifically relevant to the deployment context.
 
 ### Step 4 — Chunks → Embeddings (TODO)
@@ -110,7 +123,7 @@ make  # runs the full local pipeline (steps 2–4)
 | Tables | Reconstructed as markdown tables | Flattened or garbled |
 | Page accuracy | Exact match to PDF page count (verified) | Accurate |
 | Speed | Slow — GPU required | Fast — CPU only |
-| Output | `processed/markdowns/` (intermediate markdown) | Chunks directly |
+| Output | `processed/extracted/` then `processed/normalized/` | Chunks directly |
 
 ---
 
