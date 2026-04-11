@@ -1,8 +1,46 @@
 # MAMAI Medical Guidelines
 
-Guidelines for the RAG system of the [MAMAI project](https://github.com/nmrenyi/mamai).
+Guidelines processing pipeline for the [MAMAI project](https://github.com/nmrenyi/mamai) — converts raw clinical guideline PDFs into a versioned RAG bundle that the Android app consumes.
 
 Raw data shared by Trevor Brokowski via [Google Drive](https://drive.google.com/drive/folders/1urBQnXJaay8AlhqQPtcVjWuqZUiFcvOK). Place both folders under `raw/`.
+
+---
+
+## Data Flow Overview
+
+```
+raw/*.pdf
+    │
+    │  [Step 1 — LiGHT H100 cluster]
+    ▼
+processed/extracted/          marker-pdf markdown, one file per PDF
+    │
+    │  [Step 2 — local]
+    ▼
+processed/normalized/         span-stripped markdowns
+    │
+    │  [Step 3 — local]
+    ▼
+processed/chunks_for_rag.txt  21,731 RAG chunks  [SOURCE:stem|PAGE:n]
+    │
+    │  [Step 4 — LiGHT CPU cluster]
+    ▼
+processed/embeddings.sqlite   21,731 Gecko embeddings (768-dim, VF32 format)
+    │
+    │  [Step 5 — local, scripts/package_bundle.py]
+    ▼
+rag-bundle-<version>/         versioned release bundle
+    │
+    │  [GitHub Releases]
+    ▼
+mamai repo — rag-assets.lock.json + scripts/sync_rag_assets.sh
+    │
+    │  [adb push]
+    ▼
+Android device — getExternalFilesDir(null)/
+```
+
+**Contract across the boundary:** every chunk is prefixed `[SOURCE:<source_id>|PAGE:<n>]`. The `source_id` is the PDF filename stem, normalised to `[A-Za-z0-9\-.]` with underscores replacing all other characters. The bundle ships PDFs under the same normalised name; the app resolves PDF paths using the same rule.
 
 ---
 
@@ -22,15 +60,17 @@ scripts/
   strip_spans.py           # [step 2] strip HTML span tags from extracted markdowns
   chunk_guidelines.py      # [step 3] chunk normalized markdowns into RAG passages
   build_embeddings.py      # [step 4] embed chunks with Gecko TFLite model
+  embed_parallel.py        # [step 4] parallel embedding coordinator (N subprocesses)
   submit_embeddings.sh     # run embedding build on LiGHT CPU cluster
   run_embeddings.sh        # cluster worker: stage inputs locally, install deps, embed
+  package_bundle.py        # [step 5] package versioned release bundle
 
-Makefile                   # orchestrates steps 2–4 (step 1 runs on cluster)
+Makefile                   # orchestrates steps 2–4 (step 1 and 5 run separately)
 
 processed/                 # gitignored — generated outputs
   extracted/
-    international/         # [step 1] 39 marker-pdf markdowns, one per PDF
-    tanzania/              # [step 1] 18 marker-pdf markdowns, one per PDF
+    international/         # [step 1] marker-pdf markdowns, one per international PDF
+    tanzania/              # [step 1] marker-pdf markdowns, one per Tanzania PDF
   normalized/
     international/         # [step 2] span-stripped markdowns
     tanzania/              # [step 2] span-stripped markdowns
@@ -41,19 +81,25 @@ processed/                 # gitignored — generated outputs
 
 ---
 
+## Current Status (2026-04-11)
+
+All steps complete. Bundle v1.0.0 shipped.
+
+| Step | Output | Status |
+|------|--------|--------|
+| 1 — PDF → Markdown | 39 intl + 18 Tanzania markdowns | ✓ done |
+| 2 — Normalize | span-stripped corpus | ✓ done |
+| 3 — Chunk | 21,731 chunks in `chunks_for_rag.txt` | ✓ done |
+| 4 — Embed | 21,731 rows in `embeddings.sqlite` (validated) | ✓ done |
+| 5 — Bundle | [v1.0.0 on GitHub Releases](https://github.com/nmrenyi/mamai-medical-guidelines/releases/tag/v1.0.0) | ✓ done |
+
+---
+
 ## Pipeline
 
-### Current Status (2026-04-11)
+### Step 1 — PDF → Markdown
 
-- Step 1 complete: `processed/extracted/` contains 39 international and 18 Tanzania markdown files.
-- Step 2 complete: `processed/normalized/` contains the span-stripped corpus used for chunking.
-- Step 3 complete: `processed/chunks_for_rag.txt` contains 21,731 structured chunks.
-- Step 4 complete: `processed/embeddings.sqlite` contains 21,731 Gecko embeddings and was validated against the chunk file.
-- Validation status: the ordered text stream in `embeddings.sqlite` matches the ordered chunk stream exactly (`row_count == chunk_count == 21731`, first/last rows match, full text hash matches).
-
-### Step 1 — PDF → Markdown (done)
-
-PDFs are converted to structured markdown using [marker-pdf](https://github.com/VikParuchuri/marker), an ML-based converter that recovers headings, tables, and lists. Each `.md` file contains `<!-- page: N -->` markers aligned to physical PDF page numbers (verified against the extracted corpus).
+PDFs are converted to structured markdown using [marker-pdf](https://github.com/VikParuchuri/marker), an ML-based converter that recovers headings, tables, and lists. Each `.md` file contains `<!-- page: N -->` markers aligned to physical PDF page numbers.
 
 **Run on LiGHT cluster (EPFL) via run:ai:**
 
@@ -79,9 +125,9 @@ rsync -av \
   "processed/extracted/tanzania/"
 ```
 
-### Step 2 — Normalize (done)
+### Step 2 — Normalize
 
-Strip HTML span tags left by marker-pdf from the extracted markdowns:
+Strip HTML span tags left by marker-pdf:
 
 ```bash
 make processed/normalized
@@ -90,99 +136,109 @@ make processed/normalized
 
 Reads from `processed/extracted/`, writes to `processed/normalized/`. Originals are not modified.
 
-### Step 3 — Markdown → Chunks (done)
-
-Chunk the normalized markdowns into RAG passages:
+### Step 3 — Markdown → Chunks
 
 ```bash
 make processed/chunks_for_rag.txt
 # or: python scripts/chunk_guidelines.py
 ```
 
-**Chunking strategy (default: `structured`)**
+**Chunking strategy**
 
-Clinical guidelines are structured documents — a heading signals a new topic, not a page break. The default strategy exploits this: it splits on headings and treats page boundaries as citation metadata only. This keeps each recommendation, procedure, or section intact as a single retrieval unit, even when it spans multiple PDF pages.
+Clinical guidelines are structured documents — headings signal topic boundaries, not page breaks. The pipeline:
 
-The pipeline:
+1. **Parse into sections** — ATX headings (`#`–`######`) or standalone `**bold lines**` open new sections. All content until the next heading belongs to that section.
 
-1. **Parse into sections** — the markdown is scanned line by line. Any ATX heading (`#`–`######`) or standalone `**bold line**` (≥ 3 words) opens a new section. All content until the next heading belongs to that section.
+2. **Track pages as metadata** — `<!-- page: N -->` markers are consumed during parsing. Page boundaries never force a split; each chunk records `page_start` from its first content line.
 
-2. **Track pages as metadata** — `<!-- page: N -->` markers are consumed during parsing and attached per-line. Each chunk records `page_start` from its first content line. Page boundaries never force a split.
+3. **Filter boilerplate** — sections matching patterns like "contents", "acknowledgements", "references", or "foreword" are discarded. Empty bodies, cross-reference stubs, and blank form tables are also dropped.
 
-3. **Filter boilerplate** — sections are discarded if their heading matches patterns like "contents", "acknowledgements", "references", "foreword", or if the body looks like a table of contents (lines ending in page numbers). This removes front/back matter with no clinical value.
+4. **Emit or subdivide by size** — sections ≤ 1500 chars are emitted as one chunk. Larger sections are split by block type (tables split by row group with header repeat, lists split at item boundaries, paragraphs at `\n\n`), then greedily packed into ≤ 800-char pieces. A hard cap of 2500 chars per chunk is enforced.
 
-4. **Emit or subdivide by size**:
-   - Section ≤ 1500 chars → emitted as one chunk
-   - Section > 1500 chars → each block type is split independently, then pieces are greedily packed into chunks up to 800 chars:
-     - **Tables**: split by row groups, repeating the header row on each piece
-     - **Lists**: split at top-level item boundaries
-     - **Paragraphs**: split at `\n\n` breaks
-     - **Fallback**: overlapping 800-char windows with 100-char overlap
+5. **Prepend parent breadcrumb** — every piece gets a `> Parent > Child` breadcrumb and its section heading prepended, so every chunk is self-contained for retrieval even when the section was split across multiple pieces.
 
-   Example — a section containing 1000-char paragraph + 2000-char table + 3000-char list:
-   ```
-   paragraph (1000) → 2 pieces × ~500 chars
-   table (2000)     → N row groups × ≤800 chars, each repeating the header
-   list (3000)      → M item groups × ≤800 chars
-   ```
-   Each piece is then packed with its neighbors: if two consecutive pieces fit within 800 chars they are merged into one chunk (marked `mixed`); otherwise each becomes its own chunk. Every chunk gets the section heading prepended.
+6. **Deduplicate** — exact-text duplicates across sources are removed before writing output.
 
-5. **Prepend parent breadcrumb** — each chunk is prefixed with its ancestor heading path so it is self-contained for retrieval. A leaf-level chunk under `Recommendations > 1.2 Service organisation` becomes:
-   ```
-   > Recommendations > 1.2 Service organisation
+Output format:
+```
+<sep>[SOURCE:NICE_intrapartum_2023|PAGE:14]
+> Recommendations > 1.2 Service organisation
 
-   ### All women at low risk of complications
-   - 1.3.1 Explain to both multiparous and nulliparous women...
-   ```
-   This lets a query for a broad topic (e.g. "service organisation") match leaf-level chunks that would otherwise lack the parent context. Top-level sections (no parent) get no breadcrumb.
+### All women at low risk of complications
+Women should be offered...
+```
 
-6. **Write output** — every chunk is written as:
-   ```
-   <sep>[SOURCE:NICE_intrapartum_2023|PAGE:14]
-   > Recommendations > 1.2 Service organisation
+Use `--jsonl-sidecar <path>` for a JSONL file with richer metadata per chunk (section path, chunk type, page range).
 
-   ### All women at low risk of complications
-   Women should be offered...
-   ```
-   The `<sep>` delimiter and `[SOURCE:|PAGE:]` prefix are parsed by `RagPipeline.kt` in the Android app.
+### Step 4 — Chunks → Embeddings
 
-Use `--jsonl-sidecar <path>` to write a JSONL file with richer metadata per chunk (section path, chunk type, page range) for debugging or evaluation.
-
-**File selection:** all 39 international and 18 Tanzania files are included. The only exclusions are executive summaries that duplicate full guidelines (`SKIP_FILES` in the script). Relevance filtering is left to the retrieval system at query time.
-
-### Step 4 — Chunks → Embeddings (done)
-
-**Recommended for the full build: LiGHT CPU cluster**
+**Recommended: LiGHT CPU cluster**
 
 ```bash
 bash scripts/submit_embeddings.sh
 ```
 
-This job:
-
-1. syncs `build_embeddings.py`, `embed_parallel.py`, `run_embeddings.sh`, `chunks_for_rag.txt`, and the Gecko model files to cluster scratch
-2. stages the chunk file and model locally inside the pod to avoid `/lightscratch` NFS stalls during embedding
-3. installs `sentencepiece` and `ai-edge-litert` if the image does not already have them
-4. runs a 200-chunk smoke test
-5. runs the full parallel build with `embed_parallel.py`
-6. writes `processed/embeddings.sqlite` back to cluster scratch
+This job syncs inputs to cluster scratch, runs a 200-chunk smoke test, then runs the full parallel build with `embed_parallel.py` (N subprocesses, each writing a partial SQLite that are merged at the end).
 
 Monitor:
-
 ```bash
 runai logs mamai-embed -f
 ```
 
 Pull results:
-
 ```bash
 scp light:/mnt/light/scratch/users/yiren/mamai-medical-guidelines/processed/embeddings.sqlite processed/
-scp light:/mnt/light/scratch/users/yiren/mamai-medical-guidelines/processed/embeddings_smoke.sqlite processed/
 ```
 
+**Local build (slow, CPU-only):**
 ```bash
-make  # runs the full local pipeline (steps 2–4)
+make  # runs steps 2–4
 # or: python scripts/build_embeddings.py
+```
+
+**Embedding format:** `VF32` magic prefix + 768 × float32 little-endian = 3076 bytes per row. Parsed by Android's `SqliteVectorStore` from the Google AI Edge localagents-rag library.
+
+### Step 5 — Package & Publish Bundle
+
+Once steps 3 and 4 are complete and validated:
+
+```bash
+python scripts/package_bundle.py --version v1.1.0 --output-dir /tmp
+```
+
+This produces:
+```
+/tmp/rag-bundle-v1.1.0/
+  manifest.json          # full provenance: commit, chunk count, embedding format, per-doc entries
+  checksums.sha256       # SHA-256 for every artifact
+  runtime/
+    embeddings.sqlite    # loaded by the Android app at runtime
+  debug/
+    chunks_for_rag.txt   # for offline eval
+  docs/
+    <normalized_id>.pdf  # 55 source PDFs with URL-safe filenames
+```
+
+The script resolves every SOURCE id in the chunk file to a raw PDF, normalises the filename, and fails if any mapping is missing. 5 sourceless PDFs (exec summaries, alternate-named duplicates) are excluded automatically.
+
+**Publish to GitHub Releases:**
+
+```bash
+cd /tmp
+tar -czf rag-bundle-v1.1.0.tar.gz rag-bundle-v1.1.0/
+shasum -a 256 rag-bundle-v1.1.0/manifest.json   # record this checksum
+
+gh release create v1.1.0 rag-bundle-v1.1.0.tar.gz \
+  --repo nmrenyi/mamai-medical-guidelines \
+  --title "RAG Bundle v1.1.0" \
+  --notes "..."
+```
+
+**Then in the `mamai` consumer repo**, bump `rag-assets.lock.json` with the new version, URL, and manifest SHA256, then run:
+
+```bash
+bash scripts/sync_rag_assets.sh   # downloads, verifies checksums, stages into device_push/
+bash scripts/push_to_device.sh    # pushes staged assets to connected Android device
 ```
 
 ---
@@ -191,11 +247,11 @@ make  # runs the full local pipeline (steps 2–4)
 
 | | marker-pdf (current) | PyMuPDF (deprecated) |
 |---|---|---|
-| Text quality | ML-based: recovers structure (headings, tables, lists) | Raw character stream, no structure |
+| Text quality | ML-based: recovers headings, tables, lists | Raw character stream, no structure |
 | Tables | Reconstructed as markdown tables | Flattened or garbled |
 | Page accuracy | Exact match to PDF page count (verified) | Accurate |
 | Speed | Slow — GPU required | Fast — CPU only |
-| Output | `processed/extracted/` then `processed/normalized/` | Chunks directly |
+| Output | `processed/extracted/` → `processed/normalized/` | Chunks directly |
 
 ---
 
@@ -204,4 +260,4 @@ make  # runs the full local pipeline (steps 2–4)
 - `exclusions.py` lists PDFs skipped during extraction (duplicates, non-English)
 - `extract_tanzania.py --force` re-extracts even if output already exists
 - Cluster jobs run as uid=296712 with `FONT_PATH=/tmp/marker/...` to avoid a write-permission issue in the system packages directory
-- The embedding cluster image currently does not ship `sentencepiece` or `ai-edge-litert`; `run_embeddings.sh` installs them on demand before starting the smoke/full build
+- The embedding cluster image does not ship `sentencepiece` or `ai-edge-litert`; `run_embeddings.sh` installs them on demand before starting the build
