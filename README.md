@@ -223,16 +223,24 @@ The script resolves every SOURCE id in the chunk file to a raw PDF, normalises t
 
 **Publish to GitHub Releases:**
 
-```bash
-cd /tmp
-tar -czf rag-bundle-v1.1.0.tar.gz rag-bundle-v1.1.0/
-shasum -a 256 rag-bundle-v1.1.0/manifest.json   # record this checksum
+The script creates the tarball automatically with `COPYFILE_DISABLE=1` so macOS
+`._*` / `__MACOSX` metadata entries are never included, then validates the
+archive before finishing.
 
-gh release create v1.1.0 rag-bundle-v1.1.0.tar.gz \
+```bash
+# The script creates rag-bundle-v1.1.0.tar.gz alongside the bundle dir
+python scripts/package_bundle.py --version v1.1.0 --output-dir /tmp
+
+# Upload to GitHub Releases (use the SHA-256 printed by the script for lock.json)
+gh release create v1.1.0 /tmp/rag-bundle-v1.1.0.tar.gz \
   --repo nmrenyi/mamai-medical-guidelines \
   --title "RAG Bundle v1.1.0" \
   --notes "..."
 ```
+
+> **Never** use a bare `tar -czf` on macOS — it embeds `._*` AppleDouble
+> sidecar files that break the consumer's PDF count and may crash the Dart tar
+> reader. Always let `package_bundle.py` create the archive.
 
 **Then in the `mamai` consumer repo**, bump `rag-assets.lock.json` with the new version, URL, and manifest SHA256, then run:
 

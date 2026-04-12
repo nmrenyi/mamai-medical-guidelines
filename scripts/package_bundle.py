@@ -31,6 +31,7 @@ Usage:
 import argparse
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -299,9 +300,45 @@ def main() -> None:
     print(f"Total size:   {total_size / (1024 * 1024):.1f} MB")
     print(f"PDFs:         {len(doc_entries)}")
     print(f"Chunks:       {chunk_count}")
+
+    # Create tarball with macOS metadata disabled so ._* / __MACOSX entries are
+    # never included.  COPYFILE_DISABLE=1 is a no-op on Linux.
+    tarball_name = f"rag-bundle-{version}.tar.gz"
+    tarball_path = bundle_dir.parent / tarball_name
+    print(f"\nCreating {tarball_path} ...")
+    env = os.environ.copy()
+    env["COPYFILE_DISABLE"] = "1"
+    subprocess.run(
+        ["tar", "-czf", str(tarball_path), bundle_dir.name],
+        cwd=str(bundle_dir.parent),
+        env=env,
+        check=True,
+    )
+
+    # Validate: reject any AppleDouble / macOS metadata entries
+    bad_pattern = re.compile(r"(^|/)\._|(^|/)\.DS_Store$|^__MACOSX/")
+    result = subprocess.run(
+        ["tar", "-tzf", str(tarball_path)],
+        capture_output=True, text=True, check=True,
+    )
+    bad_entries = [line for line in result.stdout.splitlines() if bad_pattern.search(line)]
+    if bad_entries:
+        raise RuntimeError(
+            f"Tarball contains macOS metadata entries — rebuild failed:\n"
+            + "\n".join(f"  {e}" for e in bad_entries)
+        )
+
+    tarball_sha256 = sha256_file(tarball_path)
+    tarball_size_mb = tarball_path.stat().st_size / (1024 * 1024)
+    print(f"Tarball:      {tarball_path}  ({tarball_size_mb:.1f} MB)")
+    print(f"SHA-256:      {tarball_sha256}")
+    print(f"Validated:    no macOS metadata entries found")
+
     print(f"\nNext steps:")
     print(f"  1. Review {bundle_dir}/manifest.json")
-    print(f"  2. Publish as a GitHub Release asset (tar.gz or zip)")
+    print(f"  2. gh release create {version} {tarball_path} \\")
+    print(f"       --repo nmrenyi/mamai-medical-guidelines \\")
+    print(f"       --title 'RAG Bundle {version}' --notes '...'")
     print(f"  3. Update rag-assets.lock.json in the mamai consumer repo")
 
 
