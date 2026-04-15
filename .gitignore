@@ -2,6 +2,9 @@
 raw/
 processed/
 
+# Release bundles (distributed via GitHub Releases, not git)
+releases/
+
 # OS files
 .DS_Store
 

@@ -47,6 +47,7 @@ PROJECT_ROOT = SCRIPT_DIR.parent
 
 DEFAULT_EMBEDDINGS  = PROJECT_ROOT / "processed" / "embeddings.sqlite"
 DEFAULT_CHUNKS      = PROJECT_ROOT / "processed" / "chunks_for_rag.txt"
+DEFAULT_RELEASES    = PROJECT_ROOT / "releases"
 RAW_DIR             = PROJECT_ROOT / "raw"
 
 # PDFs whose stems produce no chunks (exec summaries, alternate filenames).
@@ -140,14 +141,15 @@ def main() -> None:
     parser.add_argument("--version",    required=True, help="Bundle version, e.g. v1.0.0")
     parser.add_argument("--embeddings", default=str(DEFAULT_EMBEDDINGS))
     parser.add_argument("--chunks",     default=str(DEFAULT_CHUNKS))
-    parser.add_argument("--output-dir", default=None,
-                        help="Parent directory for the bundle (default: project root)")
+    parser.add_argument("--output-dir", default=str(DEFAULT_RELEASES),
+                        help="Parent directory for the bundle (default: releases/)")
     args = parser.parse_args()
 
     embeddings_path = Path(args.embeddings)
     chunks_path     = Path(args.chunks)
     version         = args.version
-    output_parent   = Path(args.output_dir) if args.output_dir else PROJECT_ROOT
+    output_parent   = Path(args.output_dir)
+    output_parent.mkdir(parents=True, exist_ok=True)
     bundle_dir      = output_parent / f"rag-bundle-{version}"
 
     # Validate inputs
