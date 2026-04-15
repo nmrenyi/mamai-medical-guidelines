@@ -1,0 +1,85 @@
+name: Bump RAG bundle in mamai
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  bump-consumer:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout mamai
+        uses: actions/checkout@v4
+        with:
+          repository: nmrenyi/mamai
+          token: ${{ secrets.MAMAI_PAT }}
+
+      - name: Get release metadata
+        id: meta
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          echo "version=$TAG" >> $GITHUB_OUTPUT
+          echo "url=https://github.com/nmrenyi/mamai-medical-guidelines/releases/download/$TAG/rag-bundle-$TAG.tar.gz" >> $GITHUB_OUTPUT
+
+          # SHA256 from the asset digest field — no download needed
+          DIGEST=$(gh release view $TAG --repo nmrenyi/mamai-medical-guidelines \
+            --json assets --jq '.assets[] | select(.name | startswith("rag-bundle-")) | .digest')
+          echo "sha256=${DIGEST#sha256:}" >> $GITHUB_OUTPUT
+
+          # Producer commit
+          echo "commit=${{ github.sha }}" >> $GITHUB_OUTPUT
+
+          # chunk_count and source_count from release body
+          BODY=$(gh release view $TAG --repo nmrenyi/mamai-medical-guidelines --json body --jq '.body')
+          CHUNKS=$(echo "$BODY" | grep -oP '\*\*[\d,]+ chunks\*\*' | tr -d ',' | grep -oP '\d+')
+          SOURCES=$(echo "$BODY" | grep -oP 'from \d+ guideline' | grep -oP '\d+')
+          echo "chunk_count=${CHUNKS:-0}" >> $GITHUB_OUTPUT
+          echo "source_count=${SOURCES:-0}" >> $GITHUB_OUTPUT
+
+      - name: Update lock file
+        run: |
+          python3 - <<'EOF'
+          import json
+          from pathlib import Path
+
+          lock_path = Path("config/rag_assets.lock.json")
+          lock = json.loads(lock_path.read_text())
+
+          lock["bundle_version"]  = "${{ steps.meta.outputs.version }}"
+          lock["bundle_url"]      = "${{ steps.meta.outputs.url }}"
+          lock["manifest_sha256"] = "${{ steps.meta.outputs.sha256 }}"
+          lock["producer_commit"] = "${{ steps.meta.outputs.commit }}"
+
+          chunk_count  = int("${{ steps.meta.outputs.chunk_count }}")
+          source_count = int("${{ steps.meta.outputs.source_count }}")
+          if chunk_count  > 0: lock["chunk_count"]  = chunk_count
+          if source_count > 0: lock["source_count"] = source_count
+
+          lock_path.write_text(json.dumps(lock, indent=2) + "\n")
+          EOF
+
+      - name: Open PR in mamai
+        env:
+          GH_TOKEN: ${{ secrets.MAMAI_PAT }}
+        run: |
+          TAG="${{ steps.meta.outputs.version }}"
+          BRANCH="bump/rag-bundle-$TAG"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b $BRANCH
+          git add config/rag_assets.lock.json
+          git commit -m "chore: bump RAG bundle to $TAG"
+          git push origin $BRANCH
+
+          gh pr create \
+            --repo nmrenyi/mamai \
+            --title "chore: bump RAG bundle to $TAG" \
+            --body "Automated bump from [mamai-medical-guidelines $TAG](https://github.com/nmrenyi/mamai-medical-guidelines/releases/tag/$TAG).
+
+          Review the lock file change, then merge." \
+            --base main \
+            --head $BRANCH
