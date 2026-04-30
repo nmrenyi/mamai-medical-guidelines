@@ -81,6 +81,32 @@ processed/                 # gitignored — generated outputs
 
 ---
 
+## Guideline Sources
+
+### Part 1 — International Sources
+
+Ranked by authority and reliability:
+
+1. **Midwifery textbooks** — Swiss midwifery textbook and equivalents from other developed countries. *(Copyright: check with Annie)*
+2. **Midwifery examinations** — especially practical skills tests with detailed rubric descriptions. *(Subject to availability)*
+3. **Safe delivery app** — evidence-based materials designed for low-resource settings. *(Copyright: check with Annie)*
+4. **Peer-reviewed papers** — midwifery-related literature; prefer systematic reviews and meta-analyses.
+5. **Amboss database** — medical knowledge platform; check website and LinkedIn for access or academic partnership.
+6. **Meditron dataset** — EPFL medical LLM dataset; check composition and overlap with existing corpus.
+7. **Project PRISMA (George Washington University)** — potentially the world's largest midwifery dataset. *(Contact Ari and Fay, LiGHT lab)*
+
+### Part 2 — National / Local Sources
+
+#### 2a. State University of Zanzibar (SUZA)
+
+Teaching materials developed for midwifery training in Zanzibar.
+
+#### 2b. National Guidelines (via Abbas)
+
+Zanzibar and Tanzania national clinical guidelines. Process depends on D-tree's contract with the relevant authorities.
+
+---
+
 ## Current Status (2026-04-11)
 
 All steps complete. Bundle v1.0.0 shipped.
