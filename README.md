@@ -87,6 +87,7 @@ processed/                 # gitignored — generated outputs
 
 Ranked by authority and reliability:
 
+0. **NICE (nice.org.uk)** — already partially ingested (8 guidelines: Abortion 2019, Contraception 2014, GBV 2014, Antenatal 2021, Mental Health 2020, Nutrition 2025, Intrapartum 2023, Postnatal 2021). Systematic gap audit needed to identify relevant guidelines not yet in the corpus.
 1. **Midwifery textbooks** — Swiss midwifery textbook and equivalents from other developed countries. *(Copyright: check with Annie)*
 2. **Midwifery examinations** — especially practical skills tests with detailed rubric descriptions. *(Subject to availability)*
 3. **Safe delivery app** — evidence-based materials designed for low-resource settings. *(Copyright: check with Annie)*
