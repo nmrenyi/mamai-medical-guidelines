@@ -92,7 +92,7 @@ Ranked by authority and reliability:
 3. **Safe delivery app** — evidence-based materials designed for low-resource settings. *(Copyright: check with Annie)*
 4. **Peer-reviewed papers** — midwifery-related literature; prefer systematic reviews and meta-analyses.
 5. **Amboss database** — medical knowledge platform; check website and LinkedIn for access or academic partnership.
-6. **Meditron dataset** — EPFL medical LLM dataset; check composition and overlap with existing corpus.
+6. **Meditron dataset** (EPFL, [paper](https://arxiv.org/abs/2311.16079), [code](https://github.com/epfLLM/meditron), [HuggingFace](https://huggingface.co/datasets/epfl-llm/guidelines)) — Their released dataset (~38K articles) is oncology-heavy (CCO guidelines) and not directly useful for midwifery. However, their scraping code (`gap-replay/guidelines/scrapers/scrapers.py`) is a good reference: Selenium-based scrapers for WHO, NICE, CDC, CMA, ICRC and others; GROBID for PDF extraction; `clean.py` for source-specific text normalization. Their PubMed pipeline (`gap-replay/pubmed/`) uses the Semantic Scholar API (S2ORC) with journal quality filtering and citation token formatting — useful reference if peer-reviewed papers are added.
 7. **Project PRISMA (George Washington University)** — potentially the world's largest midwifery dataset. *(Contact Ari and Fay, LiGHT lab)*
 
 ### Part 2 — National / Local Sources
