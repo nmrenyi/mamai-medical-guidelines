@@ -1,48 +1,57 @@
-# Digitally Accessible Midwifery Textbooks and Source Licensing
+# Public Midwifery Examination Materials
 
-Research date: 2026-04-30 (English-only refocus: 2026-05-02)
+Research date: 2026-05-02
 
 ## Scope
 
-This report identifies English-language midwifery textbooks and textbook-like references from developed-country training contexts (UK, US, Australia / New Zealand) that may be useful for a medical RAG system supporting midwives in low-resource settings, especially Zanzibar/Tanzania.
+This report summarizes publicly available midwifery examination and assessment materials, with priority on practical skills assessments such as OSCE-style stations that include rubrics, step-by-step clinical procedure descriptions, and marking criteria.
 
-## Equivalent Developed-Country Textbooks (English)
+Secondary targets include written MCQ exams, CBT practice materials, and clinical reasoning questions with explanations.
 
-| Region | Full title | Authors/editors | Publisher, edition/year |
+## Summary
+
+The strongest public sources are:
+
+1. **ICM Essential Competencies - Assessment Guide**: most reusable assessment-design content; includes OSCE examples, rubric levels, and performance criteria.
+2. **UK NMC Midwifery Test of Competence OSCE materials**: strongest publicly available practical OSCE/rubric material.
+3. **UK NMC / Pearson VUE CBT practice tests**: useful for MCQ style, but interactive rather than downloadable.
+4. **Australia NMBA / Ahpra IQNM materials**: useful official handbooks and forms, but limited public rubric detail.
+
+## Source Inventory
+
+| Organization / source | Type of exam material | Level of detail | URL / access route |
 |---|---|---|---|
-| UK | **Mayes' Midwifery** | Sue Macdonald and Gail Johnson, editors | Elsevier, 16th edition, 2023/2024 |
-| UK | **Myles Textbook for Midwives** | Jayne E. Marshall and Maureen D. Raynor, editors | Elsevier, 17th edition, 2020 |
-| UK | **Oxford Handbook of Midwifery** | Janet Medforth, Linda Ball, Angela Walker, Sue Battersby, Sarah Stables, editors for 3rd edition | Oxford University Press, 3rd edition, 2017. A 4th edition appears scheduled for 2026. |
-| US | **Varney's Midwifery** | Julia Phillippi and Ira Kantrowitz-Gordon, editors | Jones & Bartlett Learning, 7th edition, 2024 |
-| UK | **Skills for Midwifery Practice** | Ruth Bowen (formerly Johnson), Wendy Taylor | Elsevier, 5th edition, 2023 |
-| UK | **Physiology in Childbearing: with Anatomy and Related Biosciences** | Jean Rankin (editor), Dorothy Stables (founding author) | Elsevier / Baillière Tindall, 5th edition |
-| UK | **Midwifery Essentials** series (8 volumes) | Helen Baston, Jennifer Hall | Elsevier, 2nd edition for core volumes (Basics, Antenatal, Labour, Postnatal, Infant Feeding); 1st edition for later volumes (Perinatal Mental Health, Public Health, Medical Conditions, Emergency Maternity Care) |
-| US | **Clinical Practice Guidelines for Midwifery & Women's Health** | Nell L. Tharpe, Cindy L. Farley, Robin G. Jordan | Jones & Bartlett Learning, 6th edition, 2022 |
-| Australia / New Zealand | **Midwifery: Preparation for Practice** | Sally Pairman, Sally K. Tracy, Hannah Dahlen, Lesley Dixon, editors | Elsevier Australia, 5th edition, 2022/2023 |
-| Australia | **National Midwifery Guidelines for Consultation and Referral** | Australian College of Midwives | ACM, 4th edition, 2021 |
-| Australia / New Zealand | **Skills for Midwifery Practice: Australian & New Zealand Edition** | Ruth de Vitry-Smith et al. | Elsevier, 2nd edition |
-| Australia / New Zealand | **Pharmacology in Midwifery** | Rosalie Donnellan-Fernandez et al. | Elsevier, 1st edition |
+| International Confederation of Midwives (ICM) | Essential Competencies - Assessment Guide | High for assessment design. Includes an OSCE example, performance criteria, rubric levels, feedback fields, and assessment-method guidance. It is not a full procedural OSCE station bank. | [ICM resource page](https://internationalmidwives.org/resources/essential-competencies-assessment-guide-2023/) / [PDF](https://internationalmidwives.org/wp-content/uploads/ICM-V.1.0-Essential-Competencies-Assessment-guide-2024-EN-29112024-1.pdf) |
+| ICM + Laerdal | ICM Midwifery Competencies Digital Learning Tool | Potentially high. Described as 50+ practice sessions across pregnancy, labour, birth, postnatal care, family planning, and safe abortion. The scenarios/rubrics are not exposed as downloadable public files. | [ICM project page](https://internationalmidwives.org/projects/icm-midwifery-competencies-digital-learning-tool/) / Laerdal contact route |
+| UK Nursing and Midwifery Council (NMC) | Midwifery Test of Competence OSCE marking criteria | Very high. Station-by-station criteria covering APIE, birth, intramuscular injection, neonatal assessment, newborn examination, catheter removal, IV flush/VIP, postnatal care, complex birth, professional values, and evidence-based practice. | [NMC preparation materials](https://www.nmc.org.uk/registration/joining-the-register/toc/toc-nursing-and-midwifery/resources/) / [Midwifery marking criteria PDF](https://www.nmc.org.uk/globalassets/sitedocuments/registration/toc-materials-2023/marking-docs/midwifery-marking-criteria.pdf) |
+| UK Nursing and Midwifery Council (NMC) | Midwifery mock OSCE | Very high. Includes mock scenario, candidate briefings, documentation, timings, expected performance, and marking matrices. | [Midwifery mock OSCE PDF](https://www.nmc.org.uk/globalassets/sitedocuments/registration/toc-materials-2023/mock-osces/midwifery-mock-osce-2021.pdf) |
+| UK NMC / Pearson VUE | Midwifery CBT practice tests | Good for MCQ format. Interactive Part A numeracy and Part B clinical practice tests; gives immediate correct/incorrect feedback and links to blueprint materials. Not downloadable as a question bank. | [Pearson VUE NMC practice tests](https://www.pearsonvue.com/us/en/nmc/practicetests.html) |
+| UK Nursing and Midwifery Council (NMC) | Midwifery CBT booklet, test specification, and blueprint | Moderate. Explains CBT structure: 15 numeracy questions plus 100 theory MCQ items. Blueprint maps standards to CBT/OSCE coverage. Does not provide detailed item-level explanations. | [CBT booklet PDF](https://www.nmc.org.uk/globalassets/sitedocuments/registration/toc-materials-2023/midwifery-handbooks/test-of-competence-2021-cbt-information-booklet-for-midwives.pdf), [test specification PDF](https://www.nmc.org.uk/globalassets/sitedocuments/registration/toc-materials-2023/test-specs--blueprints/the-test-of-competence-2021-midwifery-test-specification.pdf), [blueprint PDF](https://www.nmc.org.uk/globalassets/sitedocuments/registration/toc-materials-2023/test-specs--blueprints/test-of-competence-2021-midwifery-blueprint.pdf) |
+| University of Northampton / Ulster University | NMC Midwifery OSCE preparation portals | Good access routes to NMC OSCE PDFs, equipment lists, timings, supporting documents, and candidate information. Most substantive exam content is NMC-owned. | [Northampton OSCE Midwifery](https://www.northampton.ac.uk/about-us/services-and-facilities/competence-test-centre/osce-candidates/your-osce-test/osce-midwifery/) / [Ulster Midwifery preparation](https://www.ulster.ac.uk/nmc-competence-test-centre/preparing/midwifery) |
+| Australia Nursing and Midwifery Board of Australia (NMBA) / Ahpra | IQNM Midwifery OSCE and MCQ candidate materials | Moderate. Includes OSCE handbook, MCQ handbook, and example charts/forms. Useful for exam process and documentation, but public station rubrics/marking criteria were not found. | [NMBA OSCE page](https://www.nursingmidwiferyboard.gov.au/Accreditation%20/IQNM/Examination/Objective-structured-clinical-exam.aspx) / [Midwives exam page](https://www.nursingmidwiferyboard.gov.au/Accreditation/IQNM/Examination/midwives.aspx) |
+| US American Midwifery Certification Board (AMCB) | CNM/CM certification exam information and candidate handbook | Low for rubrics. Official materials describe multiple-choice certification format and content domains. Official public sample questions or rationales were not found. | [AMCB certification](https://www.amcbmidwife.org/amcb-certification) / [candidate handbook](https://www.amcbmidwife.org/amcb-certification/candidate-handbook) |
+| PracticeQuiz | CNM MCQ prep | Moderate as a third-party MCQ source. Claims 250+ MCQs with detailed explanations and a free daily question. Not official. | [PracticeQuiz CNM](https://practicequiz.com/cnm) |
+| ExamEdge / Docsity / Stuvia / Scribd | AMCB question banks and NMCN/PPH OSCE checklist uploads | Variable. Some contain MCQs with rationales or OSCE checklists, but they are unofficial, often paid, and content quality is unclear. | Search/access through each platform. |
 
-## Open, Free, or More Permissive Sources
+## Strongest Candidates for Ingestion or Manual Review
 
-These are not developed-country standard textbooks, but they are better legal and practical candidates for a low-resource RAG system.
+### 1. ICM Essential Competencies - Assessment Guide
 
-| Resource | Publisher / year | Language(s) | RAG assessment |
-|---|---|---|---|
-| **A Book for Midwives: Care for pregnancy, birth, and women's health** | Hesperian Health Guides; Susan Klein, Suellen Miller, Fiona Thomson; current 2024 revised printing | English, with other language editions available | Strongest practical candidate for Zanzibar/Tanzania adaptation. Written for low-resource community health workers; covers pregnancy, birth, and postpartum care. |
-| **WHO / ICM Midwifery Education Modules** | World Health Organization / International Confederation of Midwives, 2nd edition, 2008 | English, Portuguese, and some other translations in WHO IRIS | Useful supplement for complications and teacher education. Covers core midwifery competencies across the full scope of practice. |
-| **ICM Essential Competencies for Midwifery Practice (2024)** | International Confederation of Midwives, 2024 update | English (also Spanish, French) | Highest-priority open candidate: clinically authoritative, current (2024), freely downloadable. Defines the minimum competencies expected of a qualified midwife globally — maps directly to MAMAI's use case. |
-| **MSF Essential Obstetric and Newborn Care** | Médecins Sans Frontières, updated April 2025 | English (also Arabic, French, Spanish) | Highly relevant — designed explicitly for resource-limited settings, covers obstetric emergencies, usable as a training tool. |
-| **ICM Professional Framework for Midwifery (2025)** | International Confederation of Midwives, 2025 | English (also French, Spanish; translations to other languages explicitly permitted) | Companion to the Essential Competencies — covers professional roles, scope of practice, and identity of midwifery globally. |
-| **WHO Interprofessional Midwifery Education Toolkit (2023)** | World Health Organization, January 2023 | English | Distinct from the older WHO/ICM Education Modules (2008). Specifically designed for in-service training in fragile and humanitarian settings — high relevance for Zanzibar context. |
+- Most reusable assessment-design source found.
+- Useful for designing OSCE-like assessments because it includes competency mapping, performance criteria, rubric levels, and feedback structure.
 
-## Best Targets to Pursue
+### 2. UK NMC Midwifery OSCE Marking Criteria and Mock OSCE
 
-1. **ICM Essential Competencies for Midwifery Practice (2024)**: most authoritative open source; defines global midwife competencies, directly relevant to MAMAI.
-2. **ICM Professional Framework for Midwifery (2025)**: companion to the Essential Competencies; covers professional roles and scope of practice.
-3. **Hesperian, A Book for Midwives**: best fit for low-resource settings; written for community health workers in contexts like Zanzibar/Tanzania.
-4. **MSF Essential Obstetric and Newborn Care**: designed for resource-limited settings; covers obstetric emergencies.
-5. **Australian National Midwifery Guidelines for Consultation and Referral (2021)**: freely downloadable PDF — highest actionability of any textbook-class source.
-6. **WHO Interprofessional Midwifery Education Toolkit (2023)**: 9 modules designed for in-service training in fragile and humanitarian settings.
-7. **WHO / ICM Midwifery Education Modules (2008)**: older but covers core midwifery competencies across complications and teacher education.
-8. **Midwifery: Preparation for Practice**, **Varney's Midwifery**, **Myles**, **Mayes'**, **Skills for Midwifery Practice**, **Clinical Practice Guidelines for Midwifery & Women's Health**: high-value English standard references from UK, US, and AU/NZ training contexts.
+- Most detailed practical midwifery assessment material found.
+- Contains concrete station expectations and marking criteria.
+- Strong fit for practical skills and procedure-oriented retrieval.
+
+### 3. UK NMC / Pearson VUE CBT Practice Tests
+
+- Useful for observing clinical MCQ style and numeracy format.
+- Access is interactive rather than a downloadable question bank — use as style reference, not as a source corpus.
+
+### 4. Australia NMBA / Ahpra IQNM Materials
+
+- Official, current candidate materials for internationally qualified midwives.
+- Better for exam structure, candidate expectations, and forms than for detailed rubric content.
