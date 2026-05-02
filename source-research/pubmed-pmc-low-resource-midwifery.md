@@ -25,6 +25,15 @@ pubmed pmc open access[filter]
 
 Do not treat "has a PMCID" as sufficient for reuse. A PMCID means the full text is in PMC, but the legally relevant target is the PMC Open Access Subset, and article-level license terms vary.
 
+## TODO: Reproducible Review Options
+
+- PRISMA-ScR-style scoping review for mapping usable open-access literature.
+- PRISMA 2020-style systematic review for a narrower clinical question.
+- Evidence map with fixed topic taxonomy and source manifest.
+- Living review with saved PubMed/PMC queries and scheduled reruns.
+- Two-stage RAG corpus screen: relevance first, license compatibility second.
+- Optional quality appraisal layer using AMSTAR 2 or ROBIS.
+
 ## 1. Candidate Articles
 
 All records below have a PubMed PMID and a PMC ID. They were selected for direct relevance to low-resource midwifery, obstetric emergency care, and evidence synthesis.
