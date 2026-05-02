@@ -34,7 +34,7 @@ These are not developed-country standard textbooks, but they are better legal an
 | **ICM Essential Competencies for Midwifery Practice (2024)** | International Confederation of Midwives, 2024 update | English (also Spanish, French) | Highest-priority open candidate: clinically authoritative, current (2024), freely downloadable. Defines the minimum competencies expected of a qualified midwife globally — maps directly to MAMAI's use case. |
 | **MSF Essential Obstetric and Newborn Care** | Médecins Sans Frontières, updated April 2025 | English (also Arabic, French, Spanish) | Highly relevant — designed explicitly for resource-limited settings, covers obstetric emergencies, usable as a training tool. |
 | **ICM Professional Framework for Midwifery (2025)** | International Confederation of Midwives, 2025 | English (also French, Spanish; translations to other languages explicitly permitted) | Companion to the Essential Competencies — covers professional roles, scope of practice, and identity of midwifery globally. |
-| **WHO Interprofessional Midwifery Education Toolkit (2023)** | World Health Organization, January 2023 | English | Distinct from the older WHO/ICM Education Modules (2008). Specifically designed for in-service training in fragile and humanitarian settings — high relevance for Zanzibar context. |
+| **WHO Interprofessional Midwifery Education Toolkit / Essential Childbirth Care Course (2023)** | World Health Organization, 2023 | English | Covers normal labour, childbirth, and immediate postnatal care using the midwifery model. The ECBC is one course within the broader toolkit. Complements the 2008 emergency modules — those cover complications, this covers routine care. |
 
 ## Best Targets to Pursue
 
@@ -43,6 +43,6 @@ These are not developed-country standard textbooks, but they are better legal an
 3. **Hesperian, A Book for Midwives**: best fit for low-resource settings; written for community health workers in contexts like Zanzibar/Tanzania.
 4. **MSF Essential Obstetric and Newborn Care**: designed for resource-limited settings; covers obstetric emergencies.
 5. **Australian National Midwifery Guidelines for Consultation and Referral (2021)**: freely downloadable PDF — highest actionability of any textbook-class source.
-6. **WHO Interprofessional Midwifery Education Toolkit (2023)**: 9 modules designed for in-service training in fragile and humanitarian settings.
+6. **WHO Interprofessional Midwifery Education Toolkit / Essential Childbirth Care Course (2023)**: ECBC Module 1 available (CC BY-NC-SA); covers routine childbirth care, complements the 2008 emergency modules.
 7. **WHO / ICM Midwifery Education Modules (2008)**: older but covers core midwifery competencies across complications and teacher education.
 8. **Midwifery: Preparation for Practice**, **Varney's Midwifery**, **Myles**, **Mayes'**, **Skills for Midwifery Practice**, **Clinical Practice Guidelines for Midwifery & Women's Health**: high-value English standard references from UK, US, and AU/NZ training contexts.
