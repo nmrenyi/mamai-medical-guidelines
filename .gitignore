@@ -18,3 +18,5 @@ venv/
 .vscode/
 .idea/
 .claude/
+
+source-research/notes
