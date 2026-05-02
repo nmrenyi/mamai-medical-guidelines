@@ -34,6 +34,8 @@ Do not treat "has a PMCID" as sufficient for reuse. A PMCID means the full text 
 - Two-stage RAG corpus screen: relevance first, license compatibility second.
 - Optional quality appraisal layer using AMSTAR 2 or ROBIS.
 
+Recommended middle ground for this repo: keep corpus construction transparent, but do not run a full academic systematic review unless the output will be published or used to make clinical claims. Save exact queries, retrieval dates, result counts, included/excluded PMIDs with reasons, topic/geography tags, and article-level PMC OA license status.
+
 ## 1. Candidate Articles
 
 All records below have a PubMed PMID and a PMC ID. They were selected for direct relevance to low-resource midwifery, obstetric emergency care, and evidence synthesis.
