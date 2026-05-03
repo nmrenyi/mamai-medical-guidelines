@@ -10,7 +10,7 @@ The Safe Delivery App is a free, offline-capable job aid, training, and microlea
 
 The app originally focused on Basic Emergency Obstetric and Neonatal Care (BEmONC). Public Maternity Foundation material now describes a broader Safe Delivery App / Safe Delivery+ scope with 19 modules covering obstetric and neonatal emergency care plus preventive maternal healthcare.
 
-I found public, text-extractable supporting materials such as web pages, training exercises, and a training catalogue PDF. I did not find an official open-data export, API, or complete downloadable text corpus of the app's action cards, procedure descriptions, drug lists, quizzes, or full clinical module text.
+I found public, text-extractable supporting materials such as web pages and a training catalogue PDF. Maternity Foundation previously published a training exercises page, but that route appears to be a legacy Safe Delivery App page and may return 404 in normal browser access. I did not find an official open-data export, API, or complete downloadable text corpus of the app's action cards, procedure descriptions, drug lists, quizzes, or full clinical module text.
 
 ## 1. Clinical Content Scope
 
@@ -50,7 +50,7 @@ Legitimate public access routes found:
 
 - The app is free on Google Play and Apple App Store, and works offline after download.
 - Official site says APK pre-installation is possible in weak-connectivity settings, but says to contact Maternity Foundation for APK information.
-- The Maternity Foundation website has a public training exercises page with exercises categorized by app module.
+- A 2020 Maternity Foundation news post says training exercises were added to safedelivery.org and that about 30 exercises were publicly available from a catalogue of 120+. The old linked route is `https://www.maternity.dk/safe-delivery-app/training-exercises/`; this appears to be legacy/deprecated and may 404, so it should not be treated as a stable current access route.
 - The Partner with us & Resources page links to a downloadable, text-extractable Training Catalogue PDF.
 - The same partner page says their YouTube channel has video materials.
 - The partner page says deep links can open specific content inside the app for interoperability scenarios.
@@ -95,7 +95,8 @@ Recommended inquiry path: email annmarie@maternity.dk and CC mail@maternity.dk. 
 - Official FAQ: https://www.maternity.dk/get-started/frequently-asked-questions/
 - Partner with us & Resources: https://www.maternity.dk/partner-with-us/
 - How we support: https://www.maternity.dk/get-started/how-we-support/
-- Training exercises: https://www.maternity.dk/safe-delivery-app/training-exercises/
+- Legacy training exercises announcement: https://www.maternity.dk/launch-of-new-training-exercises-and-methods/
+- Legacy training exercises route, may 404: https://www.maternity.dk/safe-delivery-app/training-exercises/
 - Training Catalogue PDF: https://www.maternity.dk/wp-content/uploads/2025/09/Training-catalogue-sep-25.pdf
 - Contact page: https://www.maternity.dk/contact/
 - Google Play listing: https://play.google.com/store/apps/details?id=dk.maternity.safedelivery&hl=en-US
