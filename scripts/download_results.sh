@@ -50,9 +50,15 @@ case "$STATUS" in
     ;;
   NOT_FOUND)
     echo ""
-    echo "Job not found. Submit it first:"
-    echo "  bash scripts/submit_extraction_dir.sh $SUBDIR"
-    exit 1
+    echo "Job not found in Run:ai (may have completed and been cleaned up)."
+    echo "Attempting to download results anyway..."
+    rsync -av --include="*.md" --exclude="*/" \
+      "$SERVER_ROOT/processed/extracted/international/" \
+      "processed/extracted/international/"
+    echo ""
+    echo "Done. Run the following to continue the pipeline:"
+    echo "  make processed/normalized"
+    echo "  make processed/chunks_for_rag.txt"
     ;;
   *)
     echo ""

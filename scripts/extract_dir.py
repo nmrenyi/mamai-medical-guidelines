@@ -35,11 +35,11 @@ def collect_pdfs(input_dir: Path, output_dir: Path, force: bool) -> list[Path]:
     return pdfs
 
 
-def worker_fn(worker_id: int, pdf_paths: list[Path], output_dir: Path, progress_queue: Queue):
+def worker_fn(worker_id: int, pdf_paths: list[Path], output_dir: Path, progress_queue: Queue, batch_multiplier: float = 1.0):
     from marker.models import create_model_dict
     from marker.converters.pdf import PdfConverter
 
-    config = {"paginate_output": True, "extract_images": False}
+    config = {"paginate_output": True, "extract_images": False, "batch_multiplier": batch_multiplier}
     model_dict = create_model_dict()
     converter = PdfConverter(artifact_dict=model_dict, config=config)
 
@@ -61,6 +61,7 @@ def main():
     parser.add_argument("--output-dir", required=True, help="Directory to write .md files into")
     parser.add_argument("--workers", type=int, default=3, help="Parallel worker count (default: 3)")
     parser.add_argument("--force", action="store_true", help="Re-extract even if output already exists")
+    parser.add_argument("--batch-multiplier", type=float, default=1.0, help="Batch size multiplier for marker-pdf (default: 1.0; use <1.0 to reduce GPU memory)")
     args = parser.parse_args()
 
     project_root = Path(__file__).resolve().parent.parent
@@ -74,6 +75,7 @@ def main():
     print(f"Input:   {input_dir}")
     print(f"Output:  {output_dir}")
     print(f"Workers: {args.workers}")
+    print(f"Batch multiplier: {args.batch_multiplier}")
     print()
 
     print("Collecting PDFs...")
@@ -94,7 +96,7 @@ def main():
     for worker_id, chunk in enumerate(chunks):
         if not chunk:
             continue
-        p = Process(target=worker_fn, args=(worker_id, chunk, output_dir, progress_queue))
+        p = Process(target=worker_fn, args=(worker_id, chunk, output_dir, progress_queue, args.batch_multiplier))
         p.start()
         processes.append(p)
 

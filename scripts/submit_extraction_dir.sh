@@ -23,14 +23,16 @@ JOB_NAME="mamai-extract-$SUBDIR"
 IMAGE="registry.rcp.epfl.ch/light/yiren/mamai-guidelines:amd64-cuda-yiren-latest"
 PROJECT="light-yiren"
 SERVER="light"
-SERVER_ROOT="$SERVER:/mnt/light/scratch/users/yiren/mamai-medical-guidelines"
+SERVER_SCRATCH="/mnt/light/scratch/users/yiren/mamai-medical-guidelines"
+SERVER_ROOT="$SERVER:$SERVER_SCRATCH"
 
-# Delete previous job with the same name if it exists
-runai delete job "$JOB_NAME" 2>/dev/null || true
+# Delete previous job with the same name if it exists (ignore errors)
+runai delete job "$JOB_NAME" >/dev/null 2>&1 || true
 
 # Sync the raw/<subdir>/ PDFs to the cluster
 echo "Syncing raw/$SUBDIR/ to cluster..."
-rsync -av --mkpath "raw/$SUBDIR/" "$SERVER_ROOT/raw/$SUBDIR/"
+ssh "$SERVER" "mkdir -p $SERVER_SCRATCH/raw/$SUBDIR"
+rsync -av --partial -e "ssh -o ServerAliveInterval=60 -o ServerAliveCountMax=20" "raw/$SUBDIR/" "$SERVER_ROOT/raw/$SUBDIR/"
 
 # Sync the extraction script
 echo "Syncing scripts to server..."
