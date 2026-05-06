@@ -31,8 +31,8 @@ WORKERS="${WORKERS:-6}"
 SMOKE_CHUNKS="${SMOKE_CHUNKS:-200}"
 NODE_POOL="${NODE_POOL:-}"
 
-LOCAL_GECKO="${LOCAL_GECKO:-/Users/renyi/Downloads/mamai/app/model_backup/Gecko_1024_quant.tflite}"
-LOCAL_TOKENIZER="${LOCAL_TOKENIZER:-/Users/renyi/Downloads/mamai/app/model_backup/sentencepiece.model}"
+LOCAL_GECKO="${LOCAL_GECKO:-/Users/renyi/Downloads/mamai/device_push/models/Gecko_1024_quant.tflite}"
+LOCAL_TOKENIZER="${LOCAL_TOKENIZER:-/Users/renyi/Downloads/mamai/device_push/models/sentencepiece.model}"
 
 REPO_DIR="/lightscratch/users/yiren/mamai-medical-guidelines"
 SERVER_ROOT="light:/mnt/light/scratch/users/yiren/mamai-medical-guidelines"
